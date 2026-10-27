@@ -129,82 +129,36 @@ class IslandApp {
     }
   }
 
-  // --- Procedural Web Audio Ambient Music Synthesizer ---
-  // Zero external mp3 dependencies, purely synthesized soothing island sound
+  // --- Background Piano Music (User Attached Audio) ---
   initAudio() {
-    if (this.audioCtx) return;
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    this.audioCtx = new AudioContext();
+    if (this.bgmAudio) return;
+    this.bgmAudio = new Audio('audio/bgm.mp3');
+    this.bgmAudio.loop = true;
+    this.bgmAudio.volume = 0.5;
   }
 
   toggleSound() {
     this.initAudio();
-    if (!this.audioCtx) return;
-
-    if (this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
-    }
+    if (!this.bgmAudio) return;
 
     this.state.soundEnabled = !this.state.soundEnabled;
     const btn = document.getElementById('btn-sound');
     if (btn) {
       btn.classList.toggle('active', this.state.soundEnabled);
-      btn.innerHTML = this.state.soundEnabled ? '🔊 音樂: 開' : '🔇 音樂: 關';
+      btn.innerHTML = this.state.soundEnabled ? '🔊 鋼琴音樂: 開' : '🔇 音樂: 關';
     }
 
     if (this.state.soundEnabled) {
-      this.startSynthesizedBgm();
-      this.showToast('已開啟海島輕柔音樂（Web Audio 合成）');
+      const p = this.bgmAudio.play();
+      if (p !== undefined) {
+        p.catch((err) => console.warn('Audio play prevented:', err));
+      }
+      this.showToast('已播放專屬鋼琴背景音樂 🎹');
     } else {
-      this.stopSynthesizedBgm();
-      this.showToast('已暫停海島音樂');
+      this.bgmAudio.pause();
+      this.showToast('已暫停背景音樂');
     }
     this.saveState();
-  }
-
-  startSynthesizedBgm() {
-    if (!this.audioCtx) return;
-    this.stopSynthesizedBgm();
-
-    // Pentatonic scale notes (warm handpan / marimba tone: F3, G3, A3, C4, D4, E4, G4)
-    const notes = [174.61, 196.0, 220.0, 261.63, 293.66, 329.63, 392.0];
-    let step = 0;
-
-    const playNote = () => {
-      if (!this.state.soundEnabled || !this.audioCtx) return;
-
-      const osc = this.audioCtx.createOscillator();
-      const gain = this.audioCtx.createGain();
-
-      // Soft sine + gentle triangle harmonic
-      osc.type = step % 2 === 0 ? 'sine' : 'triangle';
-      const freq = notes[Math.floor(Math.random() * notes.length)];
-      osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-
-      gain.gain.setValueAtTime(0.001, this.audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.045, this.audioCtx.currentTime + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.0001, this.audioCtx.currentTime + 2.8);
-
-      osc.connect(gain);
-      gain.connect(this.audioCtx.destination);
-
-      osc.start();
-      osc.stop(this.audioCtx.currentTime + 3.0);
-
-      step++;
-      const nextTime = 1200 + Math.random() * 1600;
-      this.bgmTimer = setTimeout(playNote, nextTime);
-    };
-
-    playNote();
-  }
-
-  stopSynthesizedBgm() {
-    if (this.bgmTimer) {
-      clearTimeout(this.bgmTimer);
-      this.bgmTimer = null;
-    }
   }
 
   // --- Theme & Lighting Switcher ---
