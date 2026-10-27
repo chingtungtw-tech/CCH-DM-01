@@ -1,15 +1,287 @@
 <!doctype html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="mint">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="refresh" content="0; url=site/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <title>彰基糖友島 - 解鎖糖尿病的秘密</title>
-    <script>
-      window.location.replace('./site/');
+    <meta name="description" content="跟著彰基糖友島，解鎖糖尿病的秘密吧~ 結合《2026臺灣糖尿病流行病學年鑑》的3D文獻知識城市與互動島嶼。" />
+    <meta property="og:title" content="彰基糖友島 - 解鎖糖尿病的秘密" />
+    <meta property="og:description" content="跟著彰基糖友島，解鎖糖尿病的秘密吧~ 結合《2026臺灣糖尿病流行病學年鑑》的3D文獻知識城市與互動島嶼。" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts: 圓體 (Huninn) & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="/site/styles.css" />
+
+    <!-- Import Map for Standalone Three.js & Modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "canvas-confetti": "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/+esm"
+        }
+      }
     </script>
   </head>
-  <body style="margin:0; background-color:#e7f5f0; display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#1e3a34;">
-    <p style="font-weight:bold;">正在前往 <a href="./site/" style="color:#2a8a74;">彰基糖友島</a>...</p>
+  <body>
+    <!-- App Loading Screen -->
+    <div id="app-loader" class="app-loader">
+      <div class="loader-spinner"></div>
+      <div class="font-bold text-base text-primary">正在啟動「彰基糖友島」3D 群島...</div>
+      <div class="text-xs text-muted">加載實證文獻數據與手繪地貌中</div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="app-header">
+      <div class="brand-card">
+        <span class="brand-icon">🏝️</span>
+        <div>
+          <h1 class="brand-title">彰基糖友島</h1>
+          <p class="brand-tagline">跟著彰基糖友島，解鎖糖尿病的秘密吧~</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div id="live-clock" class="live-clock-badge">
+          🕒 載入時間中...
+        </div>
+        <button id="btn-list" class="icon-btn" title="地點清單（純文字閱讀模式）">
+          🗺️ 地點清單
+        </button>
+      </div>
+    </header>
+
+    <!-- 3D Canvas Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Floating 3D Island Labels (Tracked via WebGL projection) -->
+    <div id="tag-island-center" class="floating-island-tag" data-island-id="island-center" style="display: none;">
+      <div class="tag-inner">
+        <span class="tag-number">★</span>
+        <span class="tag-name">彰基糖友島 · 中央圖書館</span>
+        <span class="tag-badge">核心樞紐</span>
+      </div>
+      <div class="tag-pointer-down"></div>
+    </div>
+
+    <div id="tag-island-01" class="floating-island-tag" data-island-id="island-01" style="display: none;">
+      <div class="tag-inner">
+        <span class="tag-number">1</span>
+        <span class="tag-name">糖尿病知識島</span>
+        <span class="tag-badge">流行與衛教</span>
+      </div>
+      <div class="tag-pointer-down"></div>
+    </div>
+
+    <div id="tag-island-02" class="floating-island-tag" data-island-id="island-02" style="display: none;">
+      <div class="tag-inner">
+        <span class="tag-number">2</span>
+        <span class="tag-name">醫師人員島</span>
+        <span class="tag-badge">臨床與指引</span>
+      </div>
+      <div class="tag-pointer-down"></div>
+    </div>
+
+    <!-- Collapsible Bottom Control Dock (Clean & Unobstructed 3D Center) -->
+    <div class="bottom-dock-wrapper">
+      <button id="btn-dock-toggle" class="dock-toggle-btn">▾ 收合控制塢</button>
+      <div id="bottom-dock" class="bottom-dock">
+        <!-- Main Navigation & Camera -->
+        <div class="dock-group">
+          <button id="btn-overview" class="icon-btn" title="回到群島全景">
+            🌍 全景
+          </button>
+          <button id="btn-guide" class="icon-btn" title="糖糖小嚮導問答">
+            👩‍⚕️ 小嚮導
+          </button>
+          <button id="btn-chest" class="icon-btn" title="每日健康寶箱">
+            🎁 每日鑰匙
+          </button>
+          <button id="btn-collection" class="icon-btn" title="探索成就圖鑑">
+            🏆 圖鑑
+          </button>
+          <button id="btn-certificate" class="icon-btn" title="健康榮譽證書">
+            📜 證書
+          </button>
+          <button id="btn-savecode" class="icon-btn" title="跨裝置接關碼">
+            🔑 接關碼
+          </button>
+          <button id="btn-share" class="icon-btn" title="分享島嶼卡片">
+            📤 分享
+          </button>
+        </div>
+
+        <!-- Exploration Progress Bar -->
+        <div class="progress-container">
+          <div class="flex items-center justify-between">
+            <span id="progress-bar-text" class="progress-header">探索進度: 0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="progress-bar-fill" class="progress-bar"></div>
+          </div>
+        </div>
+
+        <!-- Sound & Accessibility -->
+        <div class="dock-group">
+          <button id="btn-sound" class="icon-btn" title="播放自然海島和弦音樂 (Web Audio合成)">
+            🔇 音樂: 關
+          </button>
+          <button id="btn-reduced-motion" class="icon-btn" title="暫停動畫以防止暈眩">
+            ▶ 動態: 正常
+          </button>
+        </div>
+
+        <!-- Day / Night Light Preset -->
+        <div class="dock-group">
+          <span class="dock-label">光線:</span>
+          <div class="theme-swatches">
+            <button class="theme-btn daynight-btn active" data-mode="day" title="晨光日間">☀️ 日</button>
+            <button class="theme-btn daynight-btn" data-mode="sunset" title="暖陽黃昏">🌅 暮</button>
+            <button class="theme-btn daynight-btn" data-mode="night" title="沉靜星夜">🌙 夜</button>
+          </div>
+        </div>
+
+        <!-- Theme Color Swatches -->
+        <div class="dock-group">
+          <span class="dock-label">底色:</span>
+          <div class="theme-swatches">
+            <button class="theme-btn active" data-theme="mint" title="薄荷底色 (預設)">
+              <span class="swatch-circle" style="background: #e7f5f0;"></span>薄荷
+            </button>
+            <button class="theme-btn" data-theme="paper" title="米紙底色">
+              <span class="swatch-circle" style="background: #f8f4ea;"></span>米紙
+            </button>
+            <button class="theme-btn" data-theme="ink" title="墨色底色">
+              <span class="swatch-circle" style="background: #1e2426;"></span>墨色
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Responsive Content Drawer (Side on desktop, Bottom on mobile) -->
+    <aside id="content-drawer" class="drawer" aria-label="島嶼詳細內容">
+      <div class="drawer-header">
+        <span class="text-xs font-bold text-muted uppercase tracking-wider">彰基糖友島 · 詳細導覽</span>
+        <button id="btn-drawer-close" class="btn-close" aria-label="關閉面板">✕</button>
+      </div>
+      <div id="drawer-body" class="drawer-body"></div>
+    </aside>
+
+    <!-- Modal 1: Central Library Hub -->
+    <div id="central-library-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">彰基糖友島 · 核心文獻圖書館</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="central-library-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 2: Literature Building Detail (APA 7th, DOI & Notes) -->
+    <div id="literature-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[580px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">文獻建築檔案庫</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="literature-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 3: Guide Assistant (糖糖衛教師 Q&A) -->
+    <div id="guide-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[560px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">彰基糖糖小衛教師 · 線上諮詢站</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="guide-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 4: Collection Cards -->
+    <div id="collection-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[620px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">糖友島探索圖鑑</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="collection-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 5: Certificate Generator -->
+    <div id="certificate-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[660px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">結業榮譽證書頒發</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="certificate-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 6: Treasure Chest -->
+    <div id="chest-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[480px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">每日海島鑰匙</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="chest-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 7: Save Code -->
+    <div id="savecode-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[520px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">進度接關碼</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="savecode-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 8: Share Card -->
+    <div id="share-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[500px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">分享彰基糖友島</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="share-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal 9: Text List (Full Access Fallback) -->
+    <div id="text-list-modal" class="modal-overlay">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container max-w-[640px]">
+        <div class="modal-header">
+          <span class="text-xs font-bold text-primary">地點清單與文獻總覽</span>
+          <button class="btn-close btn-modal-x" aria-label="關閉視窗">✕</button>
+        </div>
+        <div id="text-list-modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Main Logic Script -->
+    <script type="module" src="/site/js/app.js"></script>
   </body>
 </html>
-

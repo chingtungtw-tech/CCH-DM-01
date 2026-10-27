@@ -99,11 +99,17 @@ class IslandApp {
 
   async loadContent() {
     try {
-      const res = await fetch('data/content.json');
+      const isSubpath = window.location.pathname.includes('/site');
+      let res = await fetch(isSubpath ? 'data/content.json' : 'site/data/content.json').catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch('data/content.json').catch(() => null);
+      }
+      if (!res || !res.ok) {
+        res = await fetch('site/data/content.json');
+      }
       this.content = await res.json();
     } catch (err) {
       console.error('Failed to load content.json', err);
-      // Fallback notification
       alert('載入島嶼內容時發生錯誤，請重新整理網頁。');
     }
   }
@@ -132,7 +138,9 @@ class IslandApp {
   // --- Background Piano Music (User Attached Audio) ---
   initAudio() {
     if (this.bgmAudio) return;
-    this.bgmAudio = new Audio('audio/bgm.mp3');
+    const isSubpath = window.location.pathname.includes('/site');
+    const audioSrc = isSubpath ? 'audio/bgm.mp3' : 'site/audio/bgm.mp3';
+    this.bgmAudio = new Audio(audioSrc);
     this.bgmAudio.loop = true;
     this.bgmAudio.volume = 0.5;
   }
