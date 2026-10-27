@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "彰基糖友島",
+    "slug": "cch-dm",
+    "tagline": "跟著彰基糖友島，解鎖糖尿病的秘密吧~",
+    "author": "彰化基督教醫院體系 糖尿病衛教團隊 / 中華民國糖尿病衛教學會資料整理（非官方整理版）",
+    "contact": "彰化市南校街 135 號 / 諮詢專線：(04) 723-8595",
+    "audience": "一般大眾與糖友家庭",
+    "language": "zh-TW",
+    "disclaimer": "本站資料改寫摘錄自社團法人中華民國糖尿病衛教學會與國家衛生研究院《2026臺灣糖尿病流行病學年鑑》，由造島工坊 IsleForge 進行非官方互動數位化整理；臨床診斷、藥物調整與個人化治療方針請遵循主治醫師與專業醫護團隊之指導。",
+    "mascot": {
+      "name": "糖糖衛教師",
+      "title": "彰基專業糖友守護小衛教師",
+      "description": "親切熱情的彰基小護士，手拿放大鏡與健康筆記本，隨時為大家解答各項糖尿病與健康生活疑難雜症！"
+    }
+  },
+  "islandType": {
+    "id": "literature",
+    "name": "文獻知識島",
+    "description": "一個主題一座島、一篇文獻一棟房子：只放書目、你的筆記和連結，把文獻回顧變成可以逛的知識城市。",
+    "rules": [
+      { "item": "屋頂顏色", "meaning": "文獻或指引類型（綠色=臨床指引、藍色=全球調查/大型試驗、紅色=併發症研究、紫色=急症與感染）" },
+      { "item": "房子造形", "meaning": "建築形狀對應文獻層級（中央鐘塔=照護指引、別墅洋房=實證研究、觀景涼亭=臨床試驗統合分析）" },
+      { "item": "窗戶數量", "meaning": "研究核心作者群規模" },
+      { "item": "撤回警示", "meaning": "撤回或具爭議文獻在島上會降下封條並灰化警示（本站文獻均通過同行評審與資料庫驗證）" }
+    ]
+  },
+  "theme": {
+    "style": "溫暖手繪插畫",
+    "font": "Huninn, Noto Sans TC, sans-serif",
+    "primary": "#2a8a74",
+    "accent": "#e46a5e",
+    "backgrounds": [
+      { "id": "mint", "name": "薄荷", "color": "#e7f5f0", "ink": "#1e3a34", "surface": "#ffffff", "default": true },
+      { "id": "paper", "name": "米紙", "color": "#f8f4ea", "ink": "#3a3226", "surface": "#ffffff", "default": false },
+      { "id": "ink", "name": "墨色", "color": "#1e2426", "ink": "#e5ece9", "surface": "#2a3235", "default": false }
+    ]
+  },
+  "centerIsland": {
+    "id": "island-center",
+    "name": "彰基糖友島",
+    "role": "中央圖書館",
+    "subtitle": "知識樞紐與全站文獻目錄索引",
+    "description": "座落於群島核心的中央圖書館：匯聚《2026臺灣糖尿病流行病學年鑑》與國內外關鍵實證研究，提供全文獻檢索、主題樹導覽、APA 第 7 版引用格式批次匯出與全站進度管理。",
+    "landmark": "圓頂知識燈塔圖書館（發光水晶燈塔頂部、環形步道、中央拱廊）",
+    "keyStats": [
+      { "label": "臺灣第 2 型糖尿病盛行數", "value": "264.8 萬人", "note": "總盛行率 11.16%" },
+      { "label": "平均新發年齡", "value": "59.8 歲", "note": "40~64歲佔55%，早發年齡持續受關注" },
+      { "label": "年齡標準化死亡率", "value": "0.647%", "note": "自2017年0.973%持續平穩下降" },
+      { "label": "照護網 P4P 涵蓋率", "value": "45.9% ~ 59.9%", "note": "加入照護網者全死因死亡率大幅降低" }
+    ],
+    "materialDownload": {
+      "title": "2026臺灣糖尿病流行病學年鑑 (PDF)",
+      "filename": "83.pdf",
+      "path": "materials/83.pdf",
+      "size": "4.4 MB",
+      "authors": "社團法人中華民國糖尿病衛教學會 / 國家衛生研究院"
+    }
+  },
+  "islands": [
+    {
+      "order": 1,
+      "id": "island-01",
+      "name": "糖尿病知識島",
+      "group": "大眾衛教與流行病學",
+      "intro": "探索臺灣糖尿病流行軌跡、男女發病差異、器官危害預防與健康餘命守護之道。",
+      "landmark": "生命之河鐘樓與器官保護花園",
+      "landmarkDesc": "由象徵血糖波動的齒輪鐘塔、心臟與腎臟造型的綠意花圃，以及血糖試紙延伸的碼頭所組成的生命之河景觀。",
+      "overview": "依據最新健保大數據統計，糖尿病已不只是單一疾病，而是與心血管、腎臟、神經及視網膜緊密交織的全身性慢性課題。本島帶領民眾解讀臺灣流行現況與重大併發症防線。",
+      "points": [
+        {
+          "tag": "流行現況",
+          "title": "盛行率上升與發病年齡趨勢",
+          "content": "臺灣 2021 年糖尿病盛行人口已達 266 萬人（第 2 型佔 264.8 萬），盛行率 11.16%（男性 11.82% 高於女性 10.51%）。新發病平均年齡 59.8 歲（中位數 60 歲），其中 40~64 歲佔比最高（約 55%），20~39 歲年輕族群新發病率逐年微增，提示生活型態介入應及早展開。"
+        },
+        {
+          "tag": "心血管防線",
+          "title": "重大心血管事件 (MACE) 與中風預防",
+          "content": "第 2 型糖尿病人重大心血管事件盛行率由 2017 年的 16.20% 顯著降至 14.91%；心肌梗塞住院治療以經皮冠狀動脈介入治療（PCI）為主（佔 67.24%）。腦中風盛行率由 10.14% 降至 9.40%，男性各年齡層盛行率均高於女性。"
+        },
+        {
+          "tag": "保腎重要性",
+          "title": "慢性腎臟病 (CKD) 與洗腎醫療負擔",
+          "content": "臺灣糖尿病人合併慢性腎臟病盛行率達 37.56%，慢性透析（洗腎）盛行率約 2.17%。單一疾病中，合併透析患者平均每人年健保總醫療點數高達 73.2 萬點（約無併發症者 9,200 點的 8 倍），早期護腎是降低醫療負擔的最關鍵策略。"
+        },
+        {
+          "tag": "感官與足部",
+          "title": "視網膜病變早期篩檢與糖足照護",
+          "content": "視網膜病變盛行率已由 4.30% 降至 3.62%，無病變比例升至 81.53%，顯示眼底篩檢初見成效；糖尿病足整體盛行率為 2.78%，但足部壞疽比例由 1.95% 增加至 3.34%，糖友必須每日檢查雙腳、預防微小傷口演變為骨髓炎或截肢。"
+        }
+      ],
+      "literature": [
+        {
+          "id": "lit-01",
+          "title": "2017~2021 年臺灣第 2 型糖尿病流行病學趨勢與存活分析",
+          "authors": ["王景淵", "許志成", "歐弘毅", "劉佳鑫", "吳宜玲"],
+          "year": "2026",
+          "journal": "2026 臺灣糖尿病流行病學年鑑",
+          "volume": "1",
+          "pages": "01-24",
+          "doi": "10.1016/j.jfma.2026.dm.atlas",
+          "apa": "王景淵、許志成、歐弘毅、劉佳鑫、吳宜玲（2026）。2017~2021 年臺灣第 2 型糖尿病流行病學趨勢與存活分析。2026 臺灣糖尿病流行病學年鑑，1-24。https://doi.org/10.1016/j.jfma.2026.dm.atlas",
+          "type": "實證研究",
+          "roofColor": "#2a8a74",
+          "shape": "villa",
+          "summary": "以全民健保資料庫追蹤 266 萬人，發現年齡標準化死亡率逐年遞減至 0.647%，新發個案五年存活率達 89.58%。（示意整理）",
+          "tags": ["流行病學", "死亡率", "存活率", "盛行率"],
+          "retracted": false
+        },
+        {
+          "id": "lit-02",
+          "title": "IDF Diabetes Atlas 11th edition: Global prevalence and projections for 2050",
+          "authors": ["Duncan, B. B.", "Magliano, D. J.", "Boyko, E. J."],
+          "year": "2025",
+          "journal": "Nephrology Dialysis Transplantation",
+          "volume": "40",
+          "pages": "177-186",
+          "doi": "10.1093/ndt/gfaf177",
+          "apa": "Duncan, B. B., Magliano, D. J., & Boyko, E. J. (2025). IDF Diabetes Atlas 11th edition: Global prevalence and projections for 2050. Nephrology Dialysis Transplantation, 40, 177-186. https://doi.org/10.1093/ndt/gfaf177",
+          "type": "全球調查",
+          "roofColor": "#3b82f6",
+          "shape": "dome",
+          "summary": "國際糖尿病聯盟統計全球 5.89 億成年人患病，預計 2050 年達 8.53 億人，強調隱匿無症狀患者的及早篩檢價值。",
+          "tags": ["IDF", "全球調查", "糖尿病篩檢"],
+          "retracted": false
+        },
+        {
+          "id": "lit-03",
+          "title": "Causes of in-hospital death in patients with type 2 diabetes with microvascular and macrovascular complications",
+          "authors": ["Tu, C. L.", "Sue, S. P.", "Hsu, W. H.", "Huang, H. Y."],
+          "year": "2021",
+          "journal": "International Journal of Clinical Practice",
+          "volume": "75",
+          "pages": "e14491",
+          "doi": "10.1111/ijcp.14491",
+          "apa": "Tu, C. L., Sue, S. P., Hsu, W. H., & Huang, H. Y. (2021). Causes of in-hospital death in patients with type 2 diabetes with microvascular and macrovascular complications. International Journal of Clinical Practice, 75(10), e14491. https://doi.org/10.1111/ijcp.14491",
+          "type": "併發症研究",
+          "roofColor": "#e46a5e",
+          "shape": "cottage",
+          "summary": "分析臺灣第 2 型糖尿病人併發症死因，癌症與肺炎佔比顯著上升，倡導醫療體系邁向跨科整合照護。",
+          "tags": ["併發症", "死因", "大血管病變", "微血管病變"],
+          "retracted": false
+        },
+        {
+          "id": "lit-04",
+          "title": "Healthcare costs and utilization of diabetes-related complications in Taiwan: A claims database analysis",
+          "authors": ["Cheng, S. W.", "Wang, C. Y.", "Chen, J. H.", "Ko, Y."],
+          "year": "2018",
+          "journal": "Medicine (Baltimore)",
+          "volume": "97",
+          "pages": "e11602",
+          "doi": "10.1097/MD.0000000000011602",
+          "apa": "Cheng, S. W., Wang, C. Y., Chen, J. H., & Ko, Y. (2018). Healthcare costs and utilization of diabetes-related complications in Taiwan: A claims database analysis. Medicine (Baltimore), 97(31), e11602. https://doi.org/10.1097/MD.0000000000011602",
+          "type": "健保大數據",
+          "roofColor": "#f59e0b",
+          "shape": "hall",
+          "summary": "探討各類特定併發症組合之醫療點數耗用，證實透析與多重共病為健保支出激增的主因，突顯延緩病程的重要價值。",
+          "tags": ["健保點數", "醫療利用", "成本效益"],
+          "retracted": false
+        }
+      ],
+      "quiz": [
+        {
+          "q": "根據 2026 年鑑統計，2021 年臺灣第 2 型糖尿病人發病年齡的中位數約為多少歲？",
+          "options": ["42 歲", "50 歲", "60 歲", "75 歲"],
+          "ans": 2,
+          "explanation": "年鑑分析顯示第 2 型糖尿病發病年齡平均值約 59.8 歲，中位數為 60 歲，40~64 歲佔比高達 55%。"
+        },
+        {
+          "q": "在單一併發症中，哪一類糖尿病患者的平均每人年健保總醫療點數最高（約 73.2 萬點）？",
+          "options": ["僅合併腦中風", "僅合併心衰竭", "僅合併透析（洗腎）", "僅合併心肌梗塞"],
+          "ans": 2,
+          "explanation": "「僅合併透析」之患者每人年總點數高達 73.2 萬點，是無四種主要併發症患者（約 9,200 點）的 8 倍。"
+        },
+        {
+          "q": "追蹤 2017 年新發第 2 型糖尿病人，五年存活率約為多少？",
+          "options": ["約 62.5%", "約 75.3%", "約 89.6%", "約 99.1%"],
+          "ans": 2,
+          "explanation": "年鑑統計追蹤新發個案，四年存活率為 91.48%，五年存活率為 89.58%，醫療照護與用藥進步顯著提升病友存活品質。"
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "id": "island-02",
+      "name": "醫師人員島",
+      "group": "臨床醫療與照護品質",
+      "intro": "臨床治療指引、降血糖藥物器官保護益處、高血糖急症處置與疫苗防護網。",
+      "landmark": "白色現代醫療鐘塔與處方守護站",
+      "landmarkDesc": "矗立著象徵救護與希望的紅十字白塔、膠囊造型的藥理諮詢亭，以及弧形流線的疫苗防護廊道。",
+      "overview": "展示臺灣第一線醫師與照護團隊如何依據最新指引，為病患規劃兼具控糖、心腎保護與減重效益的處方，並透過照護網 (P4P) 與疫苗接種構築全方位保護盾。",
+      "points": [
+        {
+          "tag": "用藥轉折",
+          "title": "處方思維轉折：從純降糖邁向器官保護",
+          "content": "傳統口服藥以 Metformin 與磺醯尿素類 (SU) 為主，近年具器官保護效益的 SGLT-2 抑制劑（排糖藥）處方率從 5.13% 飛躍至 21.61%；合併心肌梗塞患者使用率達 25.43%、心衰竭者達 18.18%。DPP4-i 也超越 SU 成為第二常見處方。"
+        },
+        {
+          "tag": "急症應對",
+          "title": "高血糖急症 (DKA / HHS) 之處置與警訊",
+          "content": "高血糖急症發生率已由 0.60% 降至 0.46%。急症發生前最後處方中，單用胰島素比例下降，多機轉聯合治療顯著提升。中壯年 (40~64歲) 急症隔年再發生率逐年下降，顯示生活自律與規律服藥的重要。"
+        },
+        {
+          "tag": "疫苗防護盾",
+          "title": "肺炎威脅與公費疫苗保護成效",
+          "content": "糖友因免疫力低下，肺炎已躍居第 2 型糖尿病第 4 大死因。年鑑實證：65 歲以上糖友接種公費流感疫苗與肺炎鏈球菌疫苗，發生重症肺炎與死亡風險降低 20%~40%（HR 0.76~0.78），在高齡與慢性共病族群中具強大保護力。"
+        },
+        {
+          "tag": "照護網 P4P",
+          "title": "糖尿病品質論質計酬 (P4P) 與 ABC 控制指標",
+          "content": "加入糖尿病照護網 P4P 之病患全死因死亡率約 1.05%，遠低於未加入者（3.26%）。成人健檢 ABC control（A1c、血壓、血脂）三項全達標率達 33.85%，定期追蹤管理可顯著延緩失能。"
+        }
+      ],
+      "literature": [
+        {
+          "id": "lit-05",
+          "title": "2022 第 2 型糖尿病臨床照護指引：心腎與代謝全人管理",
+          "authors": ["社團法人中華民國糖尿病學會"],
+          "year": "2022",
+          "journal": "中華民國糖尿病學會臨床照護手冊",
+          "volume": "1",
+          "pages": "1-120",
+          "doi": "10.6789/daroc.guideline.2022",
+          "apa": "社團法人中華民國糖尿病學會（2022）。2022 第 2 型糖尿病臨床照護指引。社團法人中華民國糖尿病學會。https://doi.org/10.6789/daroc.guideline.2022",
+          "type": "臨床指引",
+          "roofColor": "#2a8a74",
+          "shape": "tower",
+          "summary": "全面更新臺灣第 2 型糖尿病治療路徑，建議合併心血管或慢性腎病高風險者優先使用 SGLT2i 或 GLP-1 RA。（示意整理）",
+          "tags": ["指引", "SGLT2i", "GLP-1 RA", "器官保護"],
+          "retracted": false
+        },
+        {
+          "id": "lit-06",
+          "title": "SGLT2 inhibitors for primary and secondary prevention of cardiovascular and renal outcomes in type 2 diabetes",
+          "authors": ["Zelniker, T. A.", "Wiviott, S. D.", "Raz, I.", "et al."],
+          "year": "2019",
+          "journal": "The Lancet",
+          "volume": "393",
+          "pages": "31-39",
+          "doi": "10.1016/S0140-6736(18)32590-X",
+          "apa": "Zelniker, T. A., Wiviott, S. D., Raz, I., et al. (2019). SGLT2 inhibitors for primary and secondary prevention of cardiovascular and renal outcomes in type 2 diabetes: a systematic review and meta-analysis. The Lancet, 393(10166), 31-39. https://doi.org/10.1016/S0140-6736(18)32590-X",
+          "type": "統合分析",
+          "roofColor": "#3b82f6",
+          "shape": "pavilion",
+          "summary": "收錄大型 RCT 試驗證明 SGLT2 抑制劑可降低 MACE 事件達 11%、心衰竭住院風險達 31%，並延緩腎病惡化風險達 45%。",
+          "tags": ["SGLT2i", "Lancet", "心衰竭", "保腎效益"],
+          "retracted": false
+        },
+        {
+          "id": "lit-07",
+          "title": "Cardiovascular, mortality, and kidney outcomes with GLP-1 receptor agonists in patients with type 2 diabetes",
+          "authors": ["Kristensen, S. L.", "Rørth, R.", "Jhund, P. S.", "et al."],
+          "year": "2019",
+          "journal": "The Lancet Diabetes & Endocrinology",
+          "volume": "7",
+          "pages": "776-785",
+          "doi": "10.1016/S2213-8587(19)30249-9",
+          "apa": "Kristensen, S. L., Rørth, R., Jhund, P. S., et al. (2019). Cardiovascular, mortality, and kidney outcomes with GLP-1 receptor agonists in patients with type 2 diabetes: a systematic review and meta-analysis. The Lancet Diabetes & Endocrinology, 7(10), 776-785. https://doi.org/10.1016/S2213-8587(19)30249-9",
+          "type": "統合分析",
+          "roofColor": "#ec4899",
+          "shape": "pavilion",
+          "summary": "分析 GLP-1 受體促效劑之大型心血管成果試驗，降低重大心血管事件 12%、全死因死亡率 12%，具顯著代謝與體重調控優勢。",
+          "tags": ["GLP-1 RA", "腸泌素", "減重", "心血管事件"],
+          "retracted": false
+        },
+        {
+          "id": "lit-08",
+          "title": "Hyperglycaemic crises in adults with diabetes: a consensus report",
+          "authors": ["Umpierrez, G. E.", "Davis, G. M.", "ElSayed, N. A.", "et al."],
+          "year": "2024",
+          "journal": "Diabetologia",
+          "volume": "67",
+          "pages": "1455-1479",
+          "doi": "10.1007/s00125-024-06183-8",
+          "apa": "Umpierrez, G. E., Davis, G. M., ElSayed, N. A., et al. (2024). Hyperglycaemic crises in adults with diabetes: a consensus report. Diabetologia, 67(8), 1455-1479. https://doi.org/10.1007/s00125-024-06183-8",
+          "type": "共識指引",
+          "roofColor": "#8b5cf6",
+          "shape": "station",
+          "summary": "ADA 與 EASD 聯合共識報告，重新定義酮酸中毒 (DKA) 與高血糖高滲透壓 (HHS) 的診斷標準與急救輸液配方指引。",
+          "tags": ["高血糖急症", "DKA", "HHS", "急診指引"],
+          "retracted": false
+        }
+      ],
+      "quiz": [
+        {
+          "q": "近年具有「心血管與腎臟保護」實證效益，並在各國指引中被優先推薦的新型口服降血糖藥為哪一類？",
+          "options": ["磺醯尿素類 (SU)", "SGLT-2 抑制劑（排糖藥）", "α-葡萄糖苷酶抑制劑", "傳統人體短效胰島素"],
+          "ans": 1,
+          "explanation": "SGLT-2 抑制劑經多項國際大型試驗證實具卓越的心腎保護效益，在臺灣處方率已由 5.1% 快速躍升至 21.6%。"
+        },
+        {
+          "q": "年鑑分析 65 歲以上糖友接種公費「流感疫苗」及「肺炎鏈球菌疫苗」的臨床效益為何？",
+          "options": ["完全沒有差別", "顯著降低侵襲性肺炎與死亡風險達 20% 以上", "只會引起血糖波動", "僅對 40 歲以下青年有效"],
+          "ans": 1,
+          "explanation": "經 Cox 統計模型校正共病後，接種疫苗之糖友侵襲性肺炎或死亡風險顯著下降（HR 0.76~0.78），在高齡多重共病者中尤為明顯。"
+        },
+        {
+          "q": "第 2 型糖尿病人參加健保「糖尿病品質論質計酬方案 (P4P)」後，其死亡率與未加入者相比呈現？",
+          "options": ["死亡率顯著較低（約 1.05% vs 3.26%）", "死亡率明顯增加", "兩者完全無統計差異", "僅對男性有效"],
+          "ans": 0,
+          "explanation": "年鑑數據顯示加入 P4P 照護網者全死因死亡率大幅低於未參加者，且定期接受 ABC 指標追蹤管理能有效減緩併發症發生。"
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "臺灣目前有多少人罹患糖尿病？",
+      "a": "依據《2026臺灣糖尿病流行病學年鑑》，2021年臺灣糖尿病盛行人數約 266 萬人，其中第 2 型糖尿病佔絕大多數（264.8 萬人），粗盛行率約為 11.16%，男性（11.82%）略高於女性（10.51%）。",
+      "islandId": "island-01",
+      "islandName": "糖尿病知識島"
+    },
+    {
+      "q": "什麼是糖尿病的心腎器官保護新藥？",
+      "a": "近年醫界重要的治療轉折是引入 SGLT-2 抑制劑與 GLP-1 RA（腸泌素受體促效劑）。多項大型實證試驗已證實這兩類新藥不僅能平穩降血糖，更能有效保護心臟血管、降低心衰竭住院風險，並延緩腎功能惡化。",
+      "islandId": "island-02",
+      "islandName": "醫師人員島"
+    },
+    {
+      "q": "糖友為什麼一定要施打流感與肺炎鏈球菌疫苗？",
+      "a": "因為長期高血糖會損害人體免疫防禦，肺炎已晉升為臺灣第 2 型糖友第 4 大死因。年鑑分析證實，65歲以上糖友接種公費流感疫苗與肺炎鏈球菌疫苗後，可顯著降低重症肺炎與死亡風險達 20%~40% 以上。",
+      "islandId": "island-02",
+      "islandName": "醫師人員島"
+    },
+    {
+      "q": "糖尿病洗腎（透析）的風險與負擔有多大？",
+      "a": "臺灣第 2 型糖尿病患者慢性腎臟病盛行率達 37.56%，慢性透析約 2.17%。單一疾病中，洗腎病患每年健保總點數高達 73.2 萬點，是無併發症者的 8 倍，因此早期檢測尿液微量白蛋白與腎絲球過濾率 (eGFR) 極為關鍵。",
+      "islandId": "island-01",
+      "islandName": "糖尿病知識島"
+    },
+    {
+      "q": "什麼是糖尿病照護網 P4P 計畫？",
+      "a": "健保署推動的「糖尿病醫療給付改善方案 (P4P)」，由專科醫師、衛教師、營養師組成團隊，提供每年至少 4 次門診追蹤、HbA1c、血脂、尿蛋白與眼底檢查。年鑑數據顯示加入 P4P 的糖友死亡率僅約 1.05%，遠低於未加入者之 3.26%。",
+      "islandId": "island-02",
+      "islandName": "醫師人員島"
+    },
+    {
+      "q": "什麼是 ABC 控制目標？",
+      "a": "A 代表 A1c（糖化血色素建議控制在 7% 以下）、B 代表 Blood Pressure（血壓小於 130/80 mmHg）、C 代表 Cholesterol（低密度脂蛋白膽固醇 LDL-C 小於 100 mg/dL）。三者皆達標可使心血管與腎病變風險降至最低。",
+      "islandId": "island-02",
+      "islandName": "醫師人員島"
+    }
+  ],
+  "collectionCards": [
+    {
+      "id": "card-01",
+      "title": "初次登島勳章",
+      "desc": "踏上彰基糖友島，解鎖中央圖書館總目錄",
+      "icon": "🏝️",
+      "condition": "visit_center"
+    },
+    {
+      "id": "card-02",
+      "title": "流行病學探險家",
+      "desc": "造訪「糖尿病知識島」並閱讀 4 篇流行實證文獻",
+      "icon": "📊",
+      "condition": "visit_island_1"
+    },
+    {
+      "id": "card-03",
+      "title": "心腎器官守護盾",
+      "desc": "造訪「醫師人員島」了解 SGLT2i 與 GLP-1 RA 機轉",
+      "icon": "🛡️",
+      "condition": "visit_island_2"
+    },
+    {
+      "id": "card-04",
+      "title": "疫苗雙重防護星",
+      "desc": "了解流感與肺炎鏈球菌疫苗對糖友之存活效益",
+      "icon": "💉",
+      "condition": "read_vaccine"
+    },
+    {
+      "id": "card-05",
+      "title": "糖友知識小達人",
+      "desc": "完成全島 6 題隨堂測驗並全數答對",
+      "icon": "🎓",
+      "condition": "complete_quiz"
+    },
+    {
+      "id": "card-06",
+      "title": "群島時空漫遊者",
+      "desc": "嘗試切換「薄荷／米紙／墨色」三種底色與晝夜光線",
+      "icon": "🌓",
+      "condition": "change_theme"
+    }
+  ]
+}

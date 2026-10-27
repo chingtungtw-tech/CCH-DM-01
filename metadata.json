@@ -1,0 +1,6 @@
+{
+  "name": "彰基糖友島",
+  "description": "跟著彰基糖友島，解鎖糖尿病的秘密吧~",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

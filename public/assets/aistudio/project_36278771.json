@@ -1,0 +1,170 @@
+{
+  "generator": {
+    "name": "造島工坊 IsleForge",
+    "version": 1,
+    "createdAt": "2026-10-27"
+  },
+  "site": {
+    "title": "彰基糖友島",
+    "slug": "cch-dm",
+    "tagline": "跟著彰基糖友島，解鎖糖尿病的秘密吧~",
+    "author": "",
+    "contact": "",
+    "audience": "一般大眾",
+    "language": "zh-TW",
+    "mascot": {
+      "name": "",
+      "description": ""
+    }
+  },
+  "islandType": {
+    "id": "literature",
+    "name": "文獻知識島",
+    "description": "一個主題一座島、一篇文獻一棟房子：只放書目、你的筆記和連結，把文獻回顧變成可以逛的知識城市。"
+  },
+  "centerIsland": {
+    "name": "彰基糖友島",
+    "role": "中央圖書館",
+    "description": "中央圖書館：全部文獻的總目錄（可依作者、年份、標籤搜尋）、主題樹與引用格式匯出。"
+  },
+  "extraLabel": "DOI 或文獻清單",
+  "islands": [
+    {
+      "order": 1,
+      "id": "island-01",
+      "name": "糖尿病知識島",
+      "group": "",
+      "intro": "",
+      "points": [],
+      "extra": "",
+      "link": "",
+      "material": ""
+    },
+    {
+      "order": 2,
+      "id": "island-02",
+      "name": "醫師人員島",
+      "group": "",
+      "intro": "",
+      "points": [],
+      "extra": "",
+      "link": "",
+      "material": ""
+    }
+  ],
+  "theme": {
+    "style": "溫暖手繪插畫",
+    "font": "圓體",
+    "primary": "#2a8a74",
+    "accent": "#e46a5e",
+    "backgrounds": [
+      {
+        "name": "薄荷",
+        "background": "#e7f5f0",
+        "default": true
+      },
+      {
+        "name": "米紙",
+        "background": "#f8f4ea",
+        "default": false
+      },
+      {
+        "name": "墨色",
+        "background": "#1e2426",
+        "default": false
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "search",
+      "name": "搜尋",
+      "description": "用關鍵字找島嶼與內容"
+    },
+    {
+      "id": "list",
+      "name": "地點清單",
+      "description": "不用 3D 也能讀完所有內容"
+    },
+    {
+      "id": "progress",
+      "name": "探索進度",
+      "description": "記錄看過哪些島（存在瀏覽器）"
+    },
+    {
+      "id": "reducedMotion",
+      "name": "減少動態",
+      "description": "暫停動畫，保護容易暈眩的人"
+    },
+    {
+      "id": "guide",
+      "name": "小嚮導問答",
+      "description": "從網站內容找答案並附出處，不需 API 金鑰"
+    },
+    {
+      "id": "music",
+      "name": "背景音樂",
+      "description": "使用者按下才播放，可關閉"
+    },
+    {
+      "id": "quiz",
+      "name": "小測驗",
+      "description": "每座島或中央島的測驗題"
+    },
+    {
+      "id": "collection",
+      "name": "收集圖鑑",
+      "description": "已收集／未收集卡片"
+    },
+    {
+      "id": "certificate",
+      "name": "完成證書",
+      "description": "全部完成後可下載或列印"
+    },
+    {
+      "id": "dayNight",
+      "name": "晝夜切換",
+      "description": "白天、黃昏、夜晚光線"
+    },
+    {
+      "id": "dailyKey",
+      "name": "每日鑰匙",
+      "description": "每天可開寶箱的次數"
+    },
+    {
+      "id": "clock",
+      "name": "即時時鐘",
+      "description": "顯示目前時間與天色"
+    },
+    {
+      "id": "share",
+      "name": "分享卡片",
+      "description": "產生分享用的截圖或連結"
+    },
+    {
+      "id": "people",
+      "name": "小人物散步",
+      "description": "島上有小人物沿著道路走動，增加生活感"
+    },
+    {
+      "id": "saveCode",
+      "name": "接關碼",
+      "description": "換電腦或手機時，用一串代碼接著玩"
+    }
+  ],
+  "materials": [
+    {
+      "file": "materials/83.pdf",
+      "sizeKB": 4486,
+      "note": "2026臺灣糖尿病流行病學年鑑"
+    }
+  ],
+  "webSources": [],
+  "publishMaterials": true,
+  "ai": "你的 AI 工具",
+  "deploy": {
+    "preferred": "ask",
+    "label": "做完再問使用者"
+  },
+  "notes": ""
+}
