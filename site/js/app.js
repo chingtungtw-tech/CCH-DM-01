@@ -1162,7 +1162,7 @@ class IslandApp {
 
   // --- Feature: Share Card ---
   openShareModal() {
-    const text = `🏝️ 我正在探索「彰基內分泌健康迷思群島」！由前糖尿病衛教學會理事長 杜思德醫師醫療團隊製作，破解糖尿病、減重、骨鬆、肌少症、代謝症候群、牙周病及甲狀腺7大迷思，快來一起測試您的健康觀念：\n${window.location.href}`;
+    const text = `🏝️ 我正在探索「彰基內分泌健康迷思群島」！由彰化基督教醫院內分泌暨新陳代謝科醫療團隊製作，破解糖尿病、減重、骨鬆、肌少症、代謝症候群、牙周病及甲狀腺7大迷思，快來一起測試您的健康觀念：\n${window.location.href}`;
     navigator.clipboard.writeText(text).then(() => {
       this.showToast('📋 分享文案與島嶼連結已複製至剪貼簿！');
     }).catch(() => {
