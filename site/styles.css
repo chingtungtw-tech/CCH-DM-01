@@ -1,22 +1,22 @@
-/* 彰基糖友島 - 主樣式表 (溫暖手繪插畫風格，支援薄荷/米紙/墨色三組底色與完整 RWD) */
+/* 彰基糖友島 - 主樣式表 (2D可愛卡通風格，豐富又明亮，支援三組底色與完整 RWD) */
 
 :root {
   --font-family: 'Huninn', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
-  --primary: #2a8a74;
-  --primary-hover: #237462;
-  --accent: #e46a5e;
-  --accent-hover: #cc5449;
+  --primary: #059669;
+  --primary-hover: #047857;
+  --accent: #f43f5e;
+  --accent-hover: #e11d48;
 
-  /* Theme Defaults (Mint 薄荷) */
-  --bg: #e7f5f0;
+  /* Theme Defaults (Sunny Mint / Bright Turquoise Lagoon) */
+  --bg: #dcfce7;
   --surface: #ffffff;
-  --surface-alt: #f0f9f5;
-  --ink: #1b3831;
-  --muted: #52796f;
-  --line: #cde7dd;
-  --shadow: 0 10px 25px -5px rgba(42, 138, 116, 0.12), 0 8px 10px -6px rgba(42, 138, 116, 0.08);
-  --header-bg: rgba(255, 255, 255, 0.88);
-  --dock-bg: rgba(255, 255, 255, 0.92);
+  --surface-alt: #f0fdf4;
+  --ink: #064e3b;
+  --muted: #047857;
+  --line: #a7f3d0;
+  --shadow: 0 12px 28px -4px rgba(5, 150, 105, 0.16), 0 6px 10px -4px rgba(5, 150, 105, 0.1);
+  --header-bg: rgba(255, 255, 255, 0.95);
+  --dock-bg: rgba(255, 255, 255, 0.96);
 }
 
 [data-theme="paper"] {
@@ -156,27 +156,27 @@ html, body {
   font-weight: bold;
 }
 
-/* Floating 3D Island Labels */
+/* Floating 3D Island Labels (2D Cartoon Cute Badge Style) */
 .floating-island-tag {
   position: fixed;
   z-index: 5;
   transform: translate(-50%, -100%);
   cursor: pointer;
   pointer-events: auto;
-  transition: transform 0.15s ease, filter 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform, left, top;
 }
 
 .floating-island-tag:hover {
-  transform: translate(-50%, -110%) scale(1.05);
+  transform: translate(-50%, -115%) scale(1.08);
 }
 
 .tag-inner {
-  background: var(--header-bg);
-  border: 2px solid var(--primary);
+  background: #ffffff;
+  border: 2.5px solid var(--primary);
   border-radius: 24px;
   padding: 6px 14px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.18);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -335,6 +335,8 @@ html, body {
   background: var(--surface-alt);
   border-color: var(--primary);
   color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.16);
 }
 
 .icon-btn.active {
@@ -492,13 +494,25 @@ html, body {
 }
 
 .modal-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
-.modal-container {
+.modal-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
   position: relative;
   z-index: 10;
   background: var(--surface);
@@ -506,7 +520,7 @@ html, body {
   box-shadow: var(--shadow);
   border-radius: 24px;
   width: 90%;
-  max-width: 680px;
+  max-width: 620px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -515,8 +529,28 @@ html, body {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modal-overlay.open .modal-container {
+.modal-card.modal-large {
+  max-width: 780px;
+}
+
+.modal-backdrop.open .modal-card {
   transform: scale(1);
+}
+
+.btn-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.btn-modal-close:hover {
+  background: var(--surface-alt);
+  color: var(--ink);
 }
 
 .modal-header {

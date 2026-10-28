@@ -1,11 +1,11 @@
 /**
- * 彰基糖友島 - 3D 群島視覺核心 (Three.js Low-Poly Archipelago)
- * 依照 references/island-type.md、theme.md 與 threejs 技能規範實作
+ * 彰基內分泌健康迷思群島 - 3D 景觀核心 (2D 可愛卡通風格 / 豐富明亮版)
+ * 核心樞紐：彰化基督教醫院 內分泌暨新陳代謝科
+ * 七大主題島嶼：糖尿病、健康減重、骨質疏鬆、肌少症、代謝症候群、牙周共病、甲狀腺疾病
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 export class IslandScene {
   constructor(container, options = {}) {
@@ -15,1003 +15,1147 @@ export class IslandScene {
     this.onSelectBuilding = options.onSelectBuilding || (() => {});
 
     this.currentTheme = options.currentTheme || 'mint';
-    this.dayNightMode = options.dayNightMode || 'day'; // 'day' | 'sunset' | 'night'
+    this.dayNightMode = options.dayNightMode || 'day';
     this.reducedMotion = options.reducedMotion || false;
 
     this.selectedIslandId = null;
     this.selectedBuildingId = null;
 
-    // Camera animation state
-    this.cameraTargetPos = new THREE.Vector3(0, 18, 38);
+    // Camera animation state (High overview looking down over sunny vibrant archipelago)
+    this.cameraTargetPos = new THREE.Vector3(0, 36, 52);
     this.controlsTargetPos = new THREE.Vector3(0, 0, 0);
     this.isAnimatingCamera = false;
 
-    // Interactable objects
+    // Objects
     this.islandMeshes = [];
     this.buildingMeshes = [];
     this.villagers = [];
     this.boats = [];
     this.animatedObjects = [];
+    this.clouds = [];
+    this.sparkles = [];
 
     // Raycasting
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2(-999, -999);
-    this.hoveredObject = null;
 
+    this.setupIslandDefinitions();
     this.init();
+  }
+
+  setupIslandDefinitions() {
+    const angleStep = (Math.PI * 2) / 7;
+    const baseAngle = -Math.PI / 2; // Island 1 at front (South)
+    const dist = 26;
+
+    this.islandDefs = {
+      'island-center': {
+        id: 'island-center',
+        name: '彰化基督教醫院 內分泌暨新陳代謝科',
+        pos: new THREE.Vector3(0, 0, 0),
+        radius: 9.2,
+        height: 2.5,
+        color: 0x48cae4, // Lagoon crystal turquoise base
+        grassColor: 0x5eead4, // Bright candy mint grass
+        topY: 2.2,
+        tagY: 5.8
+      },
+      'island-01': {
+        id: 'island-01',
+        order: 1,
+        name: '糖尿病迷思島',
+        angle: baseAngle,
+        pos: new THREE.Vector3(Math.cos(baseAngle) * dist, 0, Math.sin(baseAngle) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0x6ee7b7, // Mint green
+        roofColor: 0xf43f5e,  // Strawberry red
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-02': {
+        id: 'island-02',
+        order: 2,
+        name: '健康減重迷思島',
+        angle: baseAngle + angleStep,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep) * dist, 0, Math.sin(baseAngle + angleStep) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xfde047, // Cheerful lemon-lime
+        roofColor: 0xf97316,  // Cheerful orange
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-03': {
+        id: 'island-03',
+        order: 3,
+        name: '骨質疏鬆迷思島',
+        angle: baseAngle + angleStep * 2,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep * 2) * dist, 0, Math.sin(baseAngle + angleStep * 2) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xa7f3d0, // Soft milk pastel
+        roofColor: 0x06b6d4,  // Milk blue
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-04': {
+        id: 'island-04',
+        order: 4,
+        name: '肌少症迷思島',
+        angle: baseAngle + angleStep * 3,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep * 3) * dist, 0, Math.sin(baseAngle + angleStep * 3) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xfbcfe8, // Cheerful candy rose
+        roofColor: 0xd946ef,  // Bubblegum magenta
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-05': {
+        id: 'island-05',
+        order: 5,
+        name: '代謝症候群迷思島',
+        angle: baseAngle + angleStep * 4,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep * 4) * dist, 0, Math.sin(baseAngle + angleStep * 4) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xfef08a, // Golden sunshine
+        roofColor: 0xef4444,  // Bright red
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-06': {
+        id: 'island-06',
+        order: 6,
+        name: '牙周病共病迷思島',
+        angle: baseAngle + angleStep * 5,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep * 5) * dist, 0, Math.sin(baseAngle + angleStep * 5) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xbae6fd, // Clean sky cyan
+        roofColor: 0x3b82f6,  // Bright tooth blue
+        topY: 1.8,
+        tagY: 5.0
+      },
+      'island-07': {
+        id: 'island-07',
+        order: 7,
+        name: '甲狀腺疾病迷思島',
+        angle: baseAngle + angleStep * 6,
+        pos: new THREE.Vector3(Math.cos(baseAngle + angleStep * 6) * dist, 0, Math.sin(baseAngle + angleStep * 6) * dist),
+        radius: 6.8,
+        height: 2.1,
+        color: 0x38bdf8,
+        grassColor: 0xe9d5ff, // Dreamy lavender
+        roofColor: 0x8b5cf6,  // Butterfly purple
+        topY: 1.8,
+        tagY: 5.0
+      }
+    };
+  }
+
+  getIslandDef(id) {
+    return this.islandDefs[id] || null;
   }
 
   init() {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
 
-    // 1. Detect software WebGL
+    // Detect software WebGL
     this.isSoftwareGl = (() => {
       const gl = document.createElement('canvas').getContext('webgl2');
-      if (!gl) return true;
-      const ext = gl.getExtension('WEBGL_debug_renderer_info');
-      const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
-      const gpu = String(gl.getParameter(param));
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
-      return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      if (!gl) return false;
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const rendererStr = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      return /SwiftShader|llvmpipe|Software/i.test(rendererStr);
     })();
 
-    // 2. Renderer
+    // 1. Scene
+    this.scene = new THREE.Scene();
+
+    // 2. Camera
+    this.camera = new THREE.PerspectiveCamera(40, width / height, 0.5, 500);
+    this.camera.position.set(0, 36, 52);
+
+    // 3. Renderer
     this.renderer = new THREE.WebGLRenderer({
       antialias: !this.isSoftwareGl,
       powerPreference: 'high-performance',
       alpha: true
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(this.isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = !this.isSoftwareGl;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.18; // Bright, rich, vibrant exposure
     this.container.appendChild(this.renderer.domElement);
-
-    // 3. Scene & Camera
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 300);
-    this.camera.position.set(0, 20, 36);
 
     // 4. Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = !this.isSoftwareGl;
-    this.controls.dampingFactor = 0.05;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't look under the water
-    this.controls.minDistance = 8;
-    this.controls.maxDistance = 65;
-    this.controls.target.set(0, 1, 0);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.maxPolarAngle = Math.PI / 2.15;
+    this.controls.minDistance = 14;
+    this.controls.maxDistance = 120;
+    this.controls.target.set(0, 0, 0);
 
-    // Cancel camera animation on user manual input
-    this.controls.addEventListener('start', () => {
-      this.isAnimatingCamera = false;
-    });
+    // 5. Lighting
+    this.setupLighting();
 
-    // 5. Studio Environment Map
-    try {
-      const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
-      this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-      pmremGenerator.dispose();
-    } catch (e) {
-      console.warn('RoomEnvironment generation skipped:', e);
-    }
-
-    // 6. Build Scene
-    this.setupLights();
+    // 6. Build Scene Objects (Cartoon Sky, Rainbow, Ocean, 8 Islands, Bridges, Boats, Fluffy Clouds)
+    this.buildSkyAndRainbow();
     this.buildOcean();
+    this.buildPuffyClouds();
     this.buildArchipelago();
     this.buildBridgesAndBoats();
     this.buildVillagers();
+    this.buildSparkles();
 
-    // 7. Event listeners
-    this.onWindowResize = this.onWindowResize.bind(this);
-    window.addEventListener('resize', this.onWindowResize);
-
-    this.onPointerMove = this.onPointerMove.bind(this);
-    this.onClick = this.onClick.bind(this);
-    this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
-    this.renderer.domElement.addEventListener('click', this.onClick);
-
-    // Apply initial theme & lighting
-    this.applyTheme(this.currentTheme);
-    this.applyDayNight(this.dayNightMode);
+    // 7. Event Listeners
+    window.addEventListener('resize', () => this.onWindowResize());
+    this.container.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    this.container.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    this.container.addEventListener('click', (e) => this.onClick(e));
 
     // 8. Start Loop
-    this.startTime = performance.now();
-    this.lastTime = performance.now();
-    this.animate = this.animate.bind(this);
-    this.frameId = requestAnimationFrame(this.animate);
+    this.clock = new THREE.Clock();
+    this.animate();
   }
 
-  setupLights() {
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  // --- Vibrant & Bright Lighting Setup ---
+  setupLighting() {
+    // Rich, warm ambient lighting for cheerful cartoon clarity
+    this.ambientLight = new THREE.AmbientLight(0xfff5ea, 1.05);
     this.scene.add(this.ambientLight);
 
-    this.hemiLight = new THREE.HemisphereLight(0xfff8f0, 0x3d7065, 0.6);
-    this.hemiLight.position.set(0, 50, 0);
-    this.scene.add(this.hemiLight);
-
-    this.dirLight = new THREE.DirectionalLight(0xfff5e6, 1.3);
-    this.dirLight.position.set(25, 40, 20);
+    // Golden cartoon sunlight
+    this.dirLight = new THREE.DirectionalLight(0xfff0db, 1.5);
+    this.dirLight.position.set(30, 52, 26);
     if (!this.isSoftwareGl) {
       this.dirLight.castShadow = true;
       this.dirLight.shadow.mapSize.width = 2048;
       this.dirLight.shadow.mapSize.height = 2048;
-      this.dirLight.shadow.camera.near = 5;
-      this.dirLight.shadow.camera.far = 120;
-      const d = 35;
-      this.dirLight.shadow.camera.left = -d;
-      this.dirLight.shadow.camera.right = d;
-      this.dirLight.shadow.camera.top = d;
-      this.dirLight.shadow.camera.bottom = -d;
-      this.dirLight.shadow.bias = -0.0005;
-      this.dirLight.shadow.normalBias = 0.02;
+      this.dirLight.shadow.camera.near = 10;
+      this.dirLight.shadow.camera.far = 150;
+      this.dirLight.shadow.camera.left = -45;
+      this.dirLight.shadow.camera.right = 45;
+      this.dirLight.shadow.camera.top = 45;
+      this.dirLight.shadow.camera.bottom = -45;
+      this.dirLight.shadow.bias = -0.0004;
     }
     this.scene.add(this.dirLight);
 
-    // Night/Sunset decorative point lights
-    this.lighthouseBeacon = new THREE.PointLight(0xfff0a0, 0, 25);
-    this.lighthouseBeacon.position.set(0, 9.8, 0);
-    this.scene.add(this.lighthouseBeacon);
+    // Cheerful sky / ground fill light
+    this.hemisphereLight = new THREE.HemisphereLight(0xbae6fd, 0x86efac, 0.7);
+    this.scene.add(this.hemisphereLight);
+
+    this.applyDayNightLighting(this.dayNightMode);
+    this.applyThemeColors(this.currentTheme);
   }
 
+  applyDayNightLighting(mode) {
+    this.dayNightMode = mode;
+    if (mode === 'day') {
+      this.ambientLight.intensity = 1.05;
+      this.ambientLight.color.setHex(0xfff8ee);
+      this.dirLight.intensity = 1.5;
+      this.dirLight.color.setHex(0xfff0db);
+      this.dirLight.position.set(30, 52, 26);
+      this.hemisphereLight.intensity = 0.7;
+      this.hemisphereLight.color.setHex(0xbae6fd);
+      this.hemisphereLight.groundColor.setHex(0x86efac);
+    } else if (mode === 'sunset') {
+      this.ambientLight.intensity = 0.9;
+      this.ambientLight.color.setHex(0xffdfcb);
+      this.dirLight.intensity = 1.35;
+      this.dirLight.color.setHex(0xffa07a);
+      this.dirLight.position.set(45, 22, 22);
+      this.hemisphereLight.intensity = 0.55;
+      this.hemisphereLight.color.setHex(0xfecdd3);
+      this.hemisphereLight.groundColor.setHex(0xfb923c);
+    } else if (mode === 'night') {
+      this.ambientLight.intensity = 0.5;
+      this.ambientLight.color.setHex(0x4c6ef5);
+      this.dirLight.intensity = 0.75;
+      this.dirLight.color.setHex(0xc084fc);
+      this.dirLight.position.set(-25, 40, -25);
+      this.hemisphereLight.intensity = 0.45;
+      this.hemisphereLight.color.setHex(0x38bdf8);
+      this.hemisphereLight.groundColor.setHex(0x1e293b);
+    }
+  }
+
+  applyThemeColors(theme) {
+    this.currentTheme = theme;
+    // Default bright, rich sunny cyan-turquoise lagoon
+    let oceanColor = 0x22d3ee;
+    let skyFogColor = 0xe0f2fe;
+
+    if (theme === 'paper') {
+      oceanColor = 0xfacc15;
+      skyFogColor = 0xfef9c3;
+    } else if (theme === 'ink') {
+      oceanColor = 0x1e293b;
+      skyFogColor = 0x0f172a;
+    }
+
+    if (this.oceanMesh) {
+      this.oceanMesh.material.color.setHex(oceanColor);
+    }
+    this.scene.background = new THREE.Color(skyFogColor);
+    this.scene.fog = new THREE.FogExp2(skyFogColor, 0.0055); // Very clear view
+  }
+
+  // --- Cartoon Sky & Rainbow ---
+  buildSkyAndRainbow() {
+    // Pastel Rainbow Arch across the horizon
+    const rainbowGroup = new THREE.Group();
+    rainbowGroup.position.set(0, 0, -42);
+    rainbowGroup.rotation.y = 0.15;
+
+    const colors = [0xf43f5e, 0xfb923c, 0xfacc15, 0x4ade80, 0x38bdf8, 0xa855f7];
+    colors.forEach((col, idx) => {
+      const radius = 55 + idx * 0.7;
+      const arcGeo = new THREE.TorusGeometry(radius, 0.35, 8, 48, Math.PI);
+      const arcMat = new THREE.MeshBasicMaterial({
+        color: col,
+        transparent: true,
+        opacity: 0.75,
+        side: THREE.DoubleSide
+      });
+      const arcMesh = new THREE.Mesh(arcGeo, arcMat);
+      arcMesh.rotation.x = Math.PI / 18;
+      rainbowGroup.add(arcMesh);
+    });
+    this.scene.add(rainbowGroup);
+  }
+
+  // --- Tropical Lagoon Ocean with Wave Ripples ---
   buildOcean() {
-    // Large stylized ocean plane
-    const oceanGeo = new THREE.PlaneGeometry(160, 160, 32, 32);
+    const oceanGeo = new THREE.PlaneGeometry(280, 280, 48, 48);
     oceanGeo.rotateX(-Math.PI / 2);
 
-    this.oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x5ea89b,
-      roughness: 0.2,
-      metalness: 0.15,
+    const pos = oceanGeo.attributes.position;
+    this.oceanInitialY = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const wave = Math.sin(x * 0.08) * 0.18 + Math.cos(z * 0.08) * 0.18;
+      pos.setY(i, wave - 0.2);
+      this.oceanInitialY[i] = wave - 0.2;
+    }
+    oceanGeo.computeVertexNormals();
+
+    const oceanMat = new THREE.MeshStandardMaterial({
+      color: 0x22d3ee, // Crystal turquoise
+      roughness: 0.15,
+      metalness: 0.1,
       flatShading: true,
       transparent: true,
-      opacity: 0.92
+      opacity: 0.94
     });
 
-    this.oceanMesh = new THREE.Mesh(oceanGeo, this.oceanMat);
-    this.oceanMesh.position.y = -0.15;
+    this.oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    this.oceanMesh.position.y = -0.1;
     this.oceanMesh.receiveShadow = !this.isSoftwareGl;
     this.scene.add(this.oceanMesh);
-
-    // Submerged sea floor for depth
-    const floorGeo = new THREE.PlaneGeometry(180, 180);
-    floorGeo.rotateX(-Math.PI / 2);
-    const floorMat = new THREE.MeshBasicMaterial({ color: 0x1f4740 });
-    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-    floorMesh.position.y = -4;
-    this.scene.add(floorMesh);
   }
 
-  createLowPolyIsland(radius, height, segments, color, pos) {
+  // --- Fluffy 3D Cartoon Clouds drifting in the sky ---
+  buildPuffyClouds() {
+    const cloudConfigs = [
+      { x: -38, y: 24, z: -15, scale: 1.4, speed: 0.35 },
+      { x: 35, y: 28, z: -25, scale: 1.6, speed: 0.28 },
+      { x: -15, y: 30, z: 25, scale: 1.2, speed: 0.4 },
+      { x: 28, y: 22, z: 20, scale: 1.5, speed: 0.32 },
+      { x: 0, y: 32, z: -35, scale: 1.8, speed: 0.25 },
+      { x: -45, y: 26, z: 15, scale: 1.3, speed: 0.38 }
+    ];
+
+    cloudConfigs.forEach((cfg) => {
+      const cloud = this.createCartoonCloud(cfg.scale);
+      cloud.position.set(cfg.x, cfg.y, cfg.z);
+      this.scene.add(cloud);
+      this.clouds.push({ mesh: cloud, speed: cfg.speed, startX: cfg.x });
+    });
+  }
+
+  createCartoonCloud(scale = 1) {
+    const cloud = new THREE.Group();
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.4,
+      flatShading: true
+    });
+
+    // Cluster of 5 puffy overlapping spheres
+    const spheres = [
+      { r: 1.8, x: 0, y: 0, z: 0 },
+      { r: 1.4, x: -1.6, y: -0.2, z: 0 },
+      { r: 1.3, x: 1.6, y: -0.2, z: 0 },
+      { r: 1.2, x: -0.8, y: 0.7, z: 0.4 },
+      { r: 1.1, x: 0.8, y: 0.6, z: -0.3 }
+    ];
+
+    spheres.forEach((s) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(s.r * scale, 8, 8), cloudMat);
+      mesh.position.set(s.x * scale, s.y * scale, s.z * scale);
+      cloud.add(mesh);
+    });
+
+    return cloud;
+  }
+
+  // --- Cartoon Floating Sparkles (Fairy Dust over Archipelago) ---
+  buildSparkles() {
+    const sparkleGeo = new THREE.OctahedronGeometry(0.18, 0);
+    const sparkleMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.85 });
+
+    for (let i = 0; i < 24; i++) {
+      const sparkle = new THREE.Mesh(sparkleGeo, sparkleMat);
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * 30;
+      sparkle.position.set(Math.cos(a) * r, 2.5 + Math.random() * 8, Math.sin(a) * r);
+      this.scene.add(sparkle);
+      this.sparkles.push({
+        mesh: sparkle,
+        speed: 0.5 + Math.random() * 0.8,
+        offset: Math.random() * Math.PI * 2,
+        baseY: sparkle.position.y
+      });
+    }
+  }
+
+  // --- Cute Cartoon Island Base Generator ---
+  createCartoonIsland(radius, height, segments, grassColor, pos) {
     const islandGroup = new THREE.Group();
     islandGroup.position.copy(pos);
 
-    // Island rock base (tapered cylinder with jagged jitter)
-    const baseGeo = new THREE.CylinderGeometry(radius * 0.95, radius * 0.6, height, segments, 3);
-    const posAttr = baseGeo.attributes.position;
-    for (let i = 0; i < posAttr.count; i++) {
-      const y = posAttr.getY(i);
-      if (y > -height / 2 + 0.1) {
-        // subtle jitter for low-poly rocky look
-        const jitterX = (Math.sin(i * 13.5) * 0.15) * radius * 0.1;
-        const jitterZ = (Math.cos(i * 17.2) * 0.15) * radius * 0.1;
-        posAttr.setX(i, posAttr.getX(i) + jitterX);
-        posAttr.setZ(i, posAttr.getZ(i) + jitterZ);
-      }
-    }
-    baseGeo.computeVertexNormals();
-
-    const rockMat = new THREE.MeshStandardMaterial({
-      color: 0x5a5247,
-      roughness: 0.85,
-      metalness: 0.05,
-      flatShading: true
-    });
-    const rockMesh = new THREE.Mesh(baseGeo, rockMat);
-    rockMesh.position.y = height / 2 - 1.2;
-    rockMesh.castShadow = !this.isSoftwareGl;
-    rockMesh.receiveShadow = !this.isSoftwareGl;
-    islandGroup.add(rockMesh);
-
-    // Beach sand ring
-    const sandGeo = new THREE.CylinderGeometry(radius * 1.02, radius * 0.95, 0.45, segments);
+    // 1. Soft golden sand base (chubby cylinder)
+    const sandGeo = new THREE.CylinderGeometry(radius * 1.14, radius * 0.75, height, segments);
     const sandMat = new THREE.MeshStandardMaterial({
-      color: 0xebd99f,
-      roughness: 0.9,
-      metalness: 0.0,
+      color: 0xfef08a, // Warm butter-yellow beach sand
+      roughness: 0.6,
       flatShading: true
     });
     const sandMesh = new THREE.Mesh(sandGeo, sandMat);
-    sandMesh.position.y = height - 1.0;
+    sandMesh.position.y = height / 2 - 0.7;
     sandMesh.receiveShadow = !this.isSoftwareGl;
     islandGroup.add(sandMesh);
 
-    // Top grassy plateau
-    const grassGeo = new THREE.CylinderGeometry(radius * 0.9, radius * 0.96, 0.5, segments);
+    // 2. White seafoam ring around island
+    const foamGeo = new THREE.RingGeometry(radius * 1.08, radius * 1.25, segments);
+    foamGeo.rotateX(-Math.PI / 2);
+    const foamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide
+    });
+    const foamMesh = new THREE.Mesh(foamGeo, foamMat);
+    foamMesh.position.y = 0.05;
+    islandGroup.add(foamMesh);
+
+    // 3. Cute puffy grass top (vibrant candy pastel)
+    const grassGeo = new THREE.CylinderGeometry(radius * 0.98, radius * 1.05, 0.7, segments);
     const grassMat = new THREE.MeshStandardMaterial({
-      color: color || 0x489672,
-      roughness: 0.75,
-      metalness: 0.05,
+      color: grassColor || 0x4ade80,
+      roughness: 0.7,
       flatShading: true
     });
     const grassMesh = new THREE.Mesh(grassGeo, grassMat);
-    grassMesh.position.y = height - 0.7;
+    grassMesh.position.y = height - 0.15;
     grassMesh.receiveShadow = !this.isSoftwareGl;
     islandGroup.add(grassMesh);
 
-    return { islandGroup, topY: height - 0.45, radius };
+    return { islandGroup, topY: height + 0.2, radius };
   }
 
+  // --- Build Entire Archipelago (Center + 7 Outer Islands) ---
   buildArchipelago() {
-    // 1. Central Island: 彰基糖友島 (Center Library)
-    const centerPos = new THREE.Vector3(0, 0, -2);
-    const centerIsland = this.createLowPolyIsland(9.5, 2.5, 16, 0x3d9c75, centerPos);
-    this.centerIslandGroup = centerIsland.islandGroup;
-    this.centerIslandGroup.userData = { id: 'island-center', name: '彰基糖友島', type: 'island', center: centerPos };
+    // 1. Central Island: 彰化基督教醫院 內分泌暨新陳代謝科
+    const centerDef = this.islandDefs['island-center'];
+    const center = this.createCartoonIsland(centerDef.radius, centerDef.height, 22, centerDef.grassColor, centerDef.pos);
+    this.centerIslandGroup = center.islandGroup;
+    this.centerIslandGroup.userData = { id: 'island-center', name: centerDef.name, type: 'island', center: centerDef.pos };
     this.scene.add(this.centerIslandGroup);
     this.islandMeshes.push(this.centerIslandGroup);
 
-    this.buildCenterLighthouseLibrary(this.centerIslandGroup, centerIsland.topY);
-    this.decorateCentralIsland(this.centerIslandGroup, centerIsland.topY);
+    this.buildCartoonMedicalCastle(this.centerIslandGroup, center.topY);
+    this.decorateCartoonIsland(this.centerIslandGroup, center.topY, centerDef.radius * 0.85);
 
-    // 2. Island 1: 糖尿病知識島 (West / Left)
-    const island1Pos = new THREE.Vector3(-18.5, 0, 3.5);
-    const island1 = this.createLowPolyIsland(7.5, 2.2, 14, 0x4aa57b, island1Pos);
-    this.island1Group = island1.islandGroup;
-    this.island1Group.userData = { id: 'island-01', name: '糖尿病知識島', type: 'island', center: island1Pos };
-    this.scene.add(this.island1Group);
-    this.islandMeshes.push(this.island1Group);
+    // 2. 7 Surrounding Outer Islands
+    const outerKeys = ['island-01', 'island-02', 'island-03', 'island-04', 'island-05', 'island-06', 'island-07'];
+    outerKeys.forEach((key) => {
+      const def = this.islandDefs[key];
+      const isl = this.createCartoonIsland(def.radius, def.height, 18, def.grassColor, def.pos);
+      const group = isl.islandGroup;
+      group.userData = { id: def.id, name: def.name, order: def.order, type: 'island', center: def.pos };
+      this.scene.add(group);
+      this.islandMeshes.push(group);
 
-    this.buildKnowledgeIslandLandmark(this.island1Group, island1.topY);
-    this.buildIsland1Buildings(this.island1Group, island1.topY);
-    this.decorateIsland(this.island1Group, island1.topY, 7.0, 'knowledge');
+      // Cute 2D cartoon landmark building
+      this.buildCartoonLandmark(group, def, isl.topY);
 
-    // 3. Island 2: 醫師人員島 (East / Right)
-    const island2Pos = new THREE.Vector3(18.5, 0, 2.5);
-    const island2 = this.createLowPolyIsland(7.8, 2.2, 14, 0x48a080, island2Pos);
-    this.island2Group = island2.islandGroup;
-    this.island2Group.userData = { id: 'island-02', name: '醫師人員島', type: 'island', center: island2Pos };
-    this.scene.add(this.island2Group);
-    this.islandMeshes.push(this.island2Group);
+      // Cute storybook mushroom/candy cottages
+      this.buildCartoonMythCottages(group, def, isl.topY);
 
-    this.buildDoctorIslandLandmark(this.island2Group, island2.topY);
-    this.buildIsland2Buildings(this.island2Group, island2.topY);
-    this.decorateIsland(this.island2Group, island2.topY, 7.2, 'doctor');
+      // Cute colorful trees, daisies, mushrooms
+      this.decorateCartoonIsland(group, isl.topY, def.radius * 0.82);
+    });
   }
 
-  // --- Central Island Landmark: Central Library & Lighthouse ---
-  buildCenterLighthouseLibrary(group, topY) {
-    const libGroup = new THREE.Group();
-    libGroup.position.set(0, topY, 0);
+  // --- Central Island: Cute 2D Cartoon Fairy-tale Medical Castle ---
+  buildCartoonMedicalCastle(group, topY) {
+    const hub = new THREE.Group();
+    hub.position.set(0, topY, 0);
 
-    // Base podium with circular steps
-    const step1 = new THREE.Mesh(
-      new THREE.CylinderGeometry(4.2, 4.4, 0.35, 16),
-      new THREE.MeshStandardMaterial({ color: 0xdfd9ce, roughness: 0.6, flatShading: true })
+    // 1. Tiered Candy Base (Pastel Peach)
+    const basePodium = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.4, 4.8, 0.45, 18),
+      new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.5, flatShading: true })
     );
-    step1.position.y = 0.175;
-    step1.receiveShadow = !this.isSoftwareGl;
-    libGroup.add(step1);
+    basePodium.position.y = 0.22;
+    hub.add(basePodium);
 
-    const step2 = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.6, 3.8, 0.35, 16),
-      new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.6, flatShading: true })
+    // 2. Cute Main Castle Rotunda (Cream White)
+    const castleBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.8, 3.0, 2.6, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, flatShading: true })
     );
-    step2.position.y = 0.525;
-    step2.receiveShadow = !this.isSoftwareGl;
-    libGroup.add(step2);
+    castleBody.position.y = 1.6;
+    hub.add(castleBody);
 
-    // Rotunda columns
-    const colMat = new THREE.MeshStandardMaterial({ color: 0xf5f3ee, roughness: 0.4, flatShading: true });
-    const colCount = 8;
-    for (let i = 0; i < colCount; i++) {
-      const angle = (i / colCount) * Math.PI * 2;
-      const x = Math.cos(angle) * 2.8;
-      const z = Math.sin(angle) * 2.8;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 2.2, 8), colMat);
-      col.position.set(x, 1.8, z);
-      col.castShadow = !this.isSoftwareGl;
-      libGroup.add(col);
+    // 4 Cute Round Turret Towers around corners
+    const turretMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 }); // Sky blue cone roofs
+    const turretRadius = 3.2;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const tx = Math.cos(a) * turretRadius;
+      const tz = Math.sin(a) * turretRadius;
+
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 2.8, 10), turretMat);
+      tower.position.set(tx, 1.6, tz);
+      hub.add(tower);
+
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.4, 10), coneMat);
+      roof.position.set(tx, 3.6, tz);
+      hub.add(roof);
     }
 
-    // Inner Library Chamber (Rotunda Core)
-    const coreMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(2.2, 2.2, 2.2, 16),
-      new THREE.MeshStandardMaterial({ color: 0x2a8a74, roughness: 0.5, flatShading: true })
-    );
-    coreMesh.position.y = 1.8;
-    coreMesh.castShadow = !this.isSoftwareGl;
-    libGroup.add(coreMesh);
+    // 3. Giant Cute 3D Red Health Cross Emblem (with rounded edges)
+    const crossMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2, emissive: 0xb91c1c, emissiveIntensity: 0.3 });
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.38, 0.16), crossMat);
+    crossH.position.set(0, 2.1, 2.92);
+    hub.add(crossH);
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.2, 0.16), crossMat);
+    crossV.position.set(0, 2.1, 2.92);
+    hub.add(crossV);
 
-    // Archway entrance door
-    const doorMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.8, 1.4, 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x8a4b2a, roughness: 0.7 })
-    );
-    doorMesh.position.set(0, 1.4, 2.2);
-    libGroup.add(doorMesh);
+    // 4. Striped Candy Awning over Main Entrance
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 });
+    const awning = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.3, 10, 1, false, 0, Math.PI), awningMat);
+    awning.position.set(0, 1.25, 2.9);
+    awning.rotation.x = -Math.PI / 8;
+    hub.add(awning);
 
-    // Library Architrave & Balcony Ring
-    const ringMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(3.2, 3.2, 0.4, 16),
-      new THREE.MeshStandardMaterial({ color: 0xdfd9ce, roughness: 0.5, flatShading: true })
+    // 5. Fluffy Cartoon Dome (Candy Coral / Rose)
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(2.6, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3, flatShading: true })
     );
-    ringMesh.position.y = 3.1;
-    ringMesh.castShadow = !this.isSoftwareGl;
-    libGroup.add(ringMesh);
+    dome.position.y = 2.9;
+    hub.add(dome);
 
-    // Lighthouse Crystal Lantern Tower
-    const towerMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 1.8, 2.2, 12),
-      new THREE.MeshStandardMaterial({ color: 0xf8f5f0, roughness: 0.3, flatShading: true })
-    );
-    towerMesh.position.y = 4.4;
-    towerMesh.castShadow = !this.isSoftwareGl;
-    libGroup.add(towerMesh);
-
-    // Glowing crystalline lantern room
-    const lanternGlass = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.1, 1.1, 1.2, 12),
-      new THREE.MeshStandardMaterial({
-        color: 0xfff2a8,
-        emissive: 0xffd966,
-        emissiveIntensity: 0.6,
-        roughness: 0.2,
-        transparent: true,
-        opacity: 0.85
-      })
-    );
-    lanternGlass.position.y = 6.1;
-    libGroup.add(lanternGlass);
-
-    // Top Dome Roof
-    const domeRoof = new THREE.Mesh(
-      new THREE.ConeGeometry(1.5, 1.2, 16),
-      new THREE.MeshStandardMaterial({ color: 0xe46a5e, roughness: 0.4, flatShading: true })
-    );
-    domeRoof.position.y = 7.3;
-    domeRoof.castShadow = !this.isSoftwareGl;
-    libGroup.add(domeRoof);
-
-    // Spire & Golden Compass Star
+    // 6. Cute Central Clock Spire with Smiling Clock
     const spire = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.08, 1.4, 8),
-      new THREE.MeshStandardMaterial({ color: 0xf4b740, metalness: 0.7, roughness: 0.2 })
+      new THREE.CylinderGeometry(0.65, 0.85, 2.4, 10),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
     );
-    spire.position.y = 8.5;
-    libGroup.add(spire);
+    spire.position.y = 5.2;
+    hub.add(spire);
 
-    const starCrest = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.35),
-      new THREE.MeshStandardMaterial({ color: 0xffd147, metalness: 0.8, roughness: 0.2 })
+    // Smiling Clock Face
+    const clockDial = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 0.1, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.3 })
     );
-    starCrest.position.y = 9.2;
-    libGroup.add(starCrest);
-    this.animatedObjects.push({ mesh: starCrest, rotSpeed: 0.02 });
+    clockDial.rotation.x = Math.PI / 2;
+    clockDial.position.set(0, 5.2, 0.72);
+    hub.add(clockDial);
 
-    libGroup.userData = {
-      id: 'center-library-landmark',
+    // Spinning Golden Star Beacon
+    const starGeo = new THREE.OctahedronGeometry(0.85, 0);
+    const starMat = new THREE.MeshStandardMaterial({
+      color: 0xfacc15,
+      emissive: 0xf59e0b,
+      emissiveIntensity: 0.9,
+      roughness: 0.1
+    });
+    this.starBeacon = new THREE.Mesh(starGeo, starMat);
+    this.starBeacon.position.y = 7.1;
+    hub.add(this.starBeacon);
+    this.animatedObjects.push({ obj: this.starBeacon, type: 'star' });
+
+    // Cute Doctor Signboard
+    const signGroup = new THREE.Group();
+    signGroup.position.set(-2.2, 0, 3.6);
+    const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.3, 6), new THREE.MeshStandardMaterial({ color: 0x854d0e }));
+    signPost.position.y = 0.65;
+    signGroup.add(signPost);
+    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.12), new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+    signBoard.position.set(0, 1.25, 0);
+    signGroup.add(signBoard);
+    hub.add(signGroup);
+
+    hub.userData = {
+      id: 'landmark-center',
       islandId: 'island-center',
-      title: '彰基糖友中央圖書館',
+      title: '彰化基督教醫院 內分泌暨新陳代謝科 醫療總部',
       type: 'landmark'
     };
-    group.add(libGroup);
-    this.buildingMeshes.push(libGroup);
+    group.add(hub);
+    this.buildingMeshes.push(hub);
   }
 
-  decorateCentralIsland(group, topY) {
-    // Plaza cobblestone circle
-    const plaza = new THREE.Mesh(
-      new THREE.RingGeometry(4.3, 7.8, 16),
-      new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.9, side: THREE.DoubleSide })
-    );
-    plaza.rotation.x = -Math.PI / 2;
-    plaza.position.y = topY + 0.02;
-    plaza.receiveShadow = !this.isSoftwareGl;
-    group.add(plaza);
+  // --- 7 Cute 2D Cartoon Landmarks per Medical Specialty ---
+  buildCartoonLandmark(group, def, topY) {
+    const lm = new THREE.Group();
+    lm.position.set(0, topY, -1.2);
 
-    // Surrounding scholar benches, street lamps, and garden trees
-    const lampMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.5 });
-    const lampGlassMat = new THREE.MeshStandardMaterial({ color: 0xffe680, emissive: 0xffca28, emissiveIntensity: 0.4 });
-
-    for (let i = 0; i < 4; i++) {
-      const angle = (i / 4) * Math.PI * 2 + 0.3;
-      const x = Math.cos(angle) * 6.2;
-      const z = Math.sin(angle) * 6.2;
-
-      // Lamp post
-      const lamp = new THREE.Group();
-      lamp.position.set(x, topY, z);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), lampMat);
-      post.position.y = 0.8;
-      lamp.add(post);
-      const lantern = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2), lampGlassMat);
-      lantern.position.y = 1.6;
-      lamp.add(lantern);
-      group.add(lamp);
-
-      // Trees
-      this.createTree(group, new THREE.Vector3(x * 1.25, topY, z * 1.25), 1.2);
-    }
-  }
-
-  // --- Island 1: 糖尿病知識島 (Landmark & 4 Literature Buildings) ---
-  buildKnowledgeIslandLandmark(group, topY) {
-    const lmGroup = new THREE.Group();
-    lmGroup.position.set(0, topY, -1.8);
-
-    // Life Clock Tower (鐘樓)
-    const towerBase = new THREE.Mesh(
-      new THREE.BoxGeometry(2.0, 3.6, 2.0),
-      new THREE.MeshStandardMaterial({ color: 0xf1ebe1, roughness: 0.6, flatShading: true })
-    );
-    towerBase.position.y = 1.8;
-    towerBase.castShadow = !this.isSoftwareGl;
-    lmGroup.add(towerBase);
-
-    // Clock faces on 4 sides
-    const clockMat = new THREE.MeshStandardMaterial({ color: 0x2a8a74, roughness: 0.3 });
-    const dialMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-    for (let i = 0; i < 4; i++) {
-      const clockRim = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.08, 12), clockMat);
-      clockRim.rotation.x = Math.PI / 2;
-      clockRim.position.set(
-        i === 0 ? 0 : i === 1 ? 1.02 : i === 2 ? 0 : -1.02,
-        2.5,
-        i === 0 ? 1.02 : i === 1 ? 0 : i === 2 ? -1.02 : 0
+    if (def.id === 'island-01') {
+      // 1. 糖尿病迷思島：草莓奶油控糖燈塔 + 胰島素萌萌針筒塔
+      const tower = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.2, 1.5, 3.6, 12),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
       );
-      if (i % 2 === 1) clockRim.rotation.z = Math.PI / 2;
-      lmGroup.add(clockRim);
+      tower.position.y = 1.8;
+      lm.add(tower);
 
-      const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.09, 12), dialMat);
-      dial.rotation.x = Math.PI / 2;
-      dial.position.copy(clockRim.position);
-      if (i % 2 === 1) dial.rotation.z = Math.PI / 2;
-      lmGroup.add(dial);
+      // Strawberry roof with white polka dots
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(1.6, 1.6, 12),
+        new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 })
+      );
+      roof.position.y = 4.2;
+      lm.add(roof);
+
+      // Cute Insulin syringe meter with rainbow potion
+      const potion = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.35, 2.2, 10),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.4 })
+      );
+      potion.position.set(2.0, 1.2, 0.8);
+      lm.add(potion);
+
+      // Smiling Heart & Kidney flower beds
+      const heart = new THREE.Mesh(
+        new THREE.SphereGeometry(0.65, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.5 })
+      );
+      heart.scale.set(1.2, 0.8, 1.0);
+      heart.position.set(-1.8, 0.45, 1.0);
+      lm.add(heart);
+    } else if (def.id === 'island-02') {
+      // 2. 健康減重迷思島：酪梨萌萌運動館 + 芝士平衡天平
+      const avocado = new THREE.Mesh(
+        new THREE.SphereGeometry(1.6, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.5 })
+      );
+      avocado.scale.set(1.0, 1.3, 0.9);
+      avocado.position.y = 1.8;
+      lm.add(avocado);
+
+      // Avocado Seed Door (Brown sphere)
+      const seed = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 10, 10),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 })
+      );
+      seed.position.set(0, 1.4, 0.85);
+      lm.add(seed);
+
+      // Balance Scale (天平) with cute pastel weights
+      const scaleBar = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xfbbf24 }));
+      scaleBar.position.set(0, 3.4, 0);
+      lm.add(scaleBar);
+
+      const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 8), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      w1.position.set(-1.1, 2.8, 0);
+      lm.add(w1);
+      const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.25, 8), new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+      w2.position.set(1.1, 2.6, 0);
+      lm.add(w2);
+    } else if (def.id === 'island-03') {
+      // 3. 骨質疏鬆迷思島：高鈣鮮奶屋 (🥛) + 萌萌骨頭拱門
+      const milkCarton = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 3.2, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+      );
+      milkCarton.position.y = 1.6;
+      lm.add(milkCarton);
+
+      const cartonRoof = new THREE.Mesh(
+        new THREE.ConeGeometry(1.7, 1.4, 4),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 })
+      );
+      cartonRoof.position.y = 3.8;
+      cartonRoof.rotation.y = Math.PI / 4;
+      lm.add(cartonRoof);
+
+      // Cute white bone arch with pink bow
+      const boneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+      const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 8), boneMat);
+      b1.rotation.z = Math.PI / 2;
+      b1.position.set(0, 2.4, 1.3);
+      lm.add(b1);
+
+      // Smiling Sunflower sun on top
+      const sun = new THREE.Mesh(
+        new THREE.SphereGeometry(0.55, 10, 10),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.6 })
+      );
+      sun.position.set(0, 4.8, 0);
+      lm.add(sun);
+    } else if (def.id === 'island-04') {
+      // 4. 肌少症迷思島：壺鈴元氣運動館 + 荷包蛋蛋白質屋
+      const kettlebell = new THREE.Mesh(
+        new THREE.SphereGeometry(1.6, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0xd946ef, roughness: 0.3 })
+      );
+      kettlebell.position.y = 1.6;
+      lm.add(kettlebell);
+
+      // Handle on top
+      const handle = new THREE.Mesh(
+        new THREE.TorusGeometry(0.8, 0.16, 8, 16, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0x475569 })
+      );
+      handle.position.set(0, 3.1, 0);
+      lm.add(handle);
+
+      // Giant cute dumbbell
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.8, 6), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+      bar.rotation.z = Math.PI / 2;
+      bar.position.set(0, 3.4, 1.0);
+      lm.add(bar);
+    } else if (def.id === 'island-05') {
+      // 5. 代謝症候群迷思島：黃金皮尺歡樂城堡 + 愛心噴泉
+      const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+      const tape = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.25, 10, 24), ribbonMat);
+      tape.rotation.x = Math.PI / 2;
+      tape.position.y = 0.8;
+      lm.add(tape);
+
+      const castle = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.2, 1.4, 2.6, 12),
+        new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 })
+      );
+      castle.position.y = 1.8;
+      lm.add(castle);
+
+      // Spouting blue water drop fountain
+      const fountain = new THREE.Mesh(
+        new THREE.SphereGeometry(0.65, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2 })
+      );
+      fountain.position.set(0, 3.4, 0);
+      lm.add(fountain);
+    } else if (def.id === 'island-06') {
+      // 6. 牙周病共病迷思島：超萌潔白牙齒微笑城堡 (🦷)
+      const toothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15 });
+      const toothBody = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.1, 2.2, 14), toothMat);
+      toothBody.position.y = 1.4;
+      lm.add(toothBody);
+
+      const toothCap = new THREE.Mesh(new THREE.SphereGeometry(1.4, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), toothMat);
+      toothCap.position.y = 2.4;
+      lm.add(toothCap);
+
+      // Two cute cartoon dark eyes
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), eyeMat);
+      eye1.position.set(-0.45, 2.0, 1.35);
+      lm.add(eye1);
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), eyeMat);
+      eye2.position.set(0.45, 2.0, 1.35);
+      lm.add(eye2);
+
+      // Rosy cheeks (Blushing pink)
+      const blushMat = new THREE.MeshBasicMaterial({ color: 0xf472b6 });
+      const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 6), blushMat);
+      b1.position.set(-0.7, 1.7, 1.25);
+      lm.add(b1);
+      const b2 = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 6), blushMat);
+      b2.position.set(0.7, 1.7, 1.25);
+      lm.add(b2);
+
+      // Sky-blue Dental-floss arch
+      const flossMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 });
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.12, 8, 20, Math.PI), flossMat);
+      arch.position.set(0, 1.4, 0.8);
+      lm.add(arch);
+    } else if (def.id === 'island-07') {
+      // 7. 甲狀腺疾病迷思島：夢幻粉紫蝴蝶魔法城堡
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.7, 2.4, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf5f3ff, roughness: 0.4 })
+      );
+      stem.position.y = 1.2;
+      lm.add(stem);
+
+      // Giant Cartoon Fluttering Butterfly Wings (Pink & Purple)
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.3, side: THREE.DoubleSide });
+      const leftWing = new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 10), wingMat);
+      leftWing.scale.set(1.5, 1.1, 0.3);
+      leftWing.rotation.z = Math.PI / 5;
+      leftWing.position.set(-1.3, 2.4, 0);
+      lm.add(leftWing);
+
+      const rightWing = new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 10), wingMat);
+      rightWing.scale.set(1.5, 1.1, 0.3);
+      rightWing.rotation.z = -Math.PI / 5;
+      rightWing.position.set(1.3, 2.4, 0);
+      lm.add(rightWing);
+
+      // Magical glowing crystal antennae
+      const crystal = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.45, 0),
+        new THREE.MeshStandardMaterial({ color: 0xf472b6, emissive: 0xec4899, emissiveIntensity: 0.7 })
+      );
+      crystal.position.set(0, 3.2, 0);
+      lm.add(crystal);
     }
 
-    // Pyramid roof
-    const roof = new THREE.Mesh(
-      new THREE.ConeGeometry(1.6, 1.5, 4),
-      new THREE.MeshStandardMaterial({ color: 0xe46a5e, roughness: 0.4, flatShading: true })
-    );
-    roof.position.y = 4.35;
-    roof.rotation.y = Math.PI / 4;
-    roof.castShadow = !this.isSoftwareGl;
-    lmGroup.add(roof);
-
-    // Organ Flowerbed: Heart (Red) & Kidney (Green) sculpted low-poly bushes
-    const heartBed = new THREE.Mesh(
-      new THREE.SphereGeometry(0.7, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0xe46a5e, roughness: 0.8, flatShading: true })
-    );
-    heartBed.scale.set(1.2, 0.8, 1.0);
-    heartBed.position.set(-2.0, 0.35, 1.2);
-    lmGroup.add(heartBed);
-
-    const kidneyBed = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.45, 0.6, 6, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3d8b68, roughness: 0.8, flatShading: true })
-    );
-    kidneyBed.rotation.z = Math.PI / 3;
-    kidneyBed.position.set(2.0, 0.35, 1.2);
-    lmGroup.add(kidneyBed);
-
-    // Small footbridge over canal
-    const bridgePlank = new THREE.Mesh(
-      new THREE.BoxGeometry(1.2, 0.15, 2.5),
-      new THREE.MeshStandardMaterial({ color: 0xa87342, roughness: 0.8 })
-    );
-    bridgePlank.position.set(0, 0.1, 2.6);
-    lmGroup.add(bridgePlank);
-
-    lmGroup.userData = {
-      id: 'landmark-island-01',
-      islandId: 'island-01',
-      title: '生命之河鐘樓與器官保護花園',
+    lm.userData = {
+      id: `landmark-${def.id}`,
+      islandId: def.id,
+      title: def.name,
       type: 'landmark'
     };
-    group.add(lmGroup);
-    this.buildingMeshes.push(lmGroup);
+    group.add(lm);
+    this.buildingMeshes.push(lm);
   }
 
-  buildIsland1Buildings(group, topY) {
-    // 4 literature houses around the island
-    const lits = [
-      { id: 'lit-01', pos: new THREE.Vector3(-3.6, topY, -1.2), color: 0x2a8a74, shape: 'villa', title: '年鑑流行與存活研究' },
-      { id: 'lit-02', pos: new THREE.Vector3(-2.8, topY, 3.2), color: 0x3b82f6, shape: 'dome', title: 'IDF 全球糖尿病地圖' },
-      { id: 'lit-03', pos: new THREE.Vector3(3.2, topY, -2.6), color: 0xe46a5e, shape: 'cottage', title: '大小血管併發症研究' },
-      { id: 'lit-04', pos: new THREE.Vector3(3.6, topY, 2.8), color: 0xf59e0b, shape: 'hall', title: '健保大數據醫療費用' }
+  // --- Cute Storybook Mushroom / Candy Cottages ("迷思解答亭") ---
+  buildCartoonMythCottages(group, def, topY) {
+    const cottagePositions = [
+      { x: -2.7, z: 1.8, roofColor: def.roofColor },
+      { x: 2.7, z: 1.8, roofColor: def.roofColor },
+      { x: 0, z: 3.3, roofColor: 0xfacc15 } // Cheerful yellow
     ];
 
-    lits.forEach((lit) => {
-      const house = this.createLiteratureHouse(lit, 'island-01');
-      group.add(house);
-      this.buildingMeshes.push(house);
+    cottagePositions.forEach((pos, idx) => {
+      const cottage = new THREE.Group();
+      cottage.position.set(pos.x, topY, pos.z);
+
+      // Chubby round walls (Warm cream)
+      const wall = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.8, 0.9, 1.2, 12),
+        new THREE.MeshStandardMaterial({ color: 0xfffbeb, roughness: 0.6, flatShading: true })
+      );
+      wall.position.y = 0.6;
+      wall.castShadow = !this.isSoftwareGl;
+      cottage.add(wall);
+
+      // Puffy Mushroom/Candy Roof (Vibrant color)
+      const roof = new THREE.Mesh(
+        new THREE.SphereGeometry(1.15, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: pos.roofColor, roughness: 0.3, flatShading: true })
+      );
+      roof.position.y = 1.15;
+      roof.castShadow = !this.isSoftwareGl;
+      cottage.add(roof);
+
+      // White polka dots on roof (2D cartoon mushroom look)
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      for (let i = 0; i < 4; i++) {
+        const da = (i / 4) * Math.PI * 2;
+        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.18, 8), dotMat);
+        dot.position.set(Math.cos(da) * 0.85, 1.6, Math.sin(da) * 0.85);
+        dot.lookAt(new THREE.Vector3(0, 3, 0));
+        cottage.add(dot);
+      }
+
+      // Rounded arched wooden door
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(0.38, 0.65, 0.1),
+        new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 })
+      );
+      door.position.set(0, 0.35, 0.85);
+      cottage.add(door);
+
+      // Cute stone chimney puffing cartoon smoke bubble
+      const chimney = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.16, 0.6, 6),
+        new THREE.MeshStandardMaterial({ color: 0xb45309 })
+      );
+      chimney.position.set(0.65, 1.8, -0.3);
+      cottage.add(chimney);
+
+      const smokeBubble = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 })
+      );
+      smokeBubble.position.set(0.65, 2.25, -0.3);
+      cottage.add(smokeBubble);
+
+      cottage.userData = {
+        id: `pavilion-${def.id}-${idx + 1}`,
+        islandId: def.id,
+        title: `${def.name} · 迷思解答亭 #${idx + 1}`,
+        type: 'pavilion'
+      };
+      group.add(cottage);
+      this.buildingMeshes.push(cottage);
     });
   }
 
-  // --- Island 2: 醫師人員島 (Landmark & 4 Literature Buildings) ---
-  buildDoctorIslandLandmark(group, topY) {
-    const lmGroup = new THREE.Group();
-    lmGroup.position.set(0, topY, -1.5);
-
-    // Modern White Medical Bell Tower
-    const towerBody = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 4.2, 2.4),
-      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3, flatShading: true })
-    );
-    towerBody.position.y = 2.1;
-    towerBody.castShadow = !this.isSoftwareGl;
-    lmGroup.add(towerBody);
-
-    // Medical Red Cross on tower front
-    const crossH = new THREE.Mesh(
-      new THREE.BoxGeometry(1.2, 0.35, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xe46a5e, roughness: 0.4 })
-    );
-    crossH.position.set(0, 3.0, 1.24);
-    lmGroup.add(crossH);
-
-    const crossV = new THREE.Mesh(
-      new THREE.BoxGeometry(0.35, 1.2, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xe46a5e, roughness: 0.4 })
-    );
-    crossV.position.set(0, 3.0, 1.24);
-    lmGroup.add(crossV);
-
-    // Slanted Modern Canopy / Spire
-    const topCap = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.8, 1.6, 1.0, 4),
-      new THREE.MeshStandardMaterial({ color: 0x2a8a74, roughness: 0.4, flatShading: true })
-    );
-    topCap.position.y = 4.7;
-    topCap.rotation.y = Math.PI / 4;
-    lmGroup.add(topCap);
-
-    // Prescription Capsule Gazebo (膠囊觀景亭)
-    const capsulePavilion = new THREE.Group();
-    capsulePavilion.position.set(-2.5, 0, 1.5);
-    const pillHalf1 = new THREE.Mesh(
-      new THREE.SphereGeometry(0.45, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3 })
-    );
-    pillHalf1.position.y = 1.2;
-    capsulePavilion.add(pillHalf1);
-    const pillBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.45, 0.6, 12),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
-    );
-    pillBody.position.y = 0.9;
-    capsulePavilion.add(pillBody);
-    lmGroup.add(capsulePavilion);
-
-    // Vaccine Shield Arch (疫苗防護拱門)
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3, metalness: 0.2 });
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 8, 16, Math.PI), archMat);
-    arch.position.set(2.4, 0.9, 1.5);
-    arch.rotation.x = -Math.PI / 12;
-    lmGroup.add(arch);
-
-    lmGroup.userData = {
-      id: 'landmark-island-02',
-      islandId: 'island-02',
-      title: '白色現代醫療鐘塔與處方守護站',
-      type: 'landmark'
-    };
-    group.add(lmGroup);
-    this.buildingMeshes.push(lmGroup);
-  }
-
-  buildIsland2Buildings(group, topY) {
-    // 4 literature houses for Island 2
-    const lits = [
-      { id: 'lit-05', pos: new THREE.Vector3(-3.8, topY, -1.8), color: 0x2a8a74, shape: 'tower', title: '臺灣糖尿病臨床照護指引' },
-      { id: 'lit-06', pos: new THREE.Vector3(-3.0, topY, 3.2), color: 0x3b82f6, shape: 'pavilion', title: 'SGLT2i 統合分析 (Lancet)' },
-      { id: 'lit-07', pos: new THREE.Vector3(3.2, topY, -2.2), color: 0xec4899, shape: 'pavilion', title: 'GLP-1 RA 統合分析 (Lancet)' },
-      { id: 'lit-08', pos: new THREE.Vector3(3.5, topY, 2.6), color: 0x8b5cf6, shape: 'station', title: '高血糖急症處置共識' }
-    ];
-
-    lits.forEach((lit) => {
-      const house = this.createLiteratureHouse(lit, 'island-02');
-      group.add(house);
-      this.buildingMeshes.push(house);
-    });
-  }
-
-  // Helper: Create stylized Literature House (1 文獻 = 1 棟房子)
-  createLiteratureHouse(spec, islandId) {
-    const houseGroup = new THREE.Group();
-    houseGroup.position.copy(spec.pos);
-
-    const wallColor = 0xfaf8f5;
-    const roofColor = spec.color || 0x2a8a74;
-
-    // 1. House Body
-    const bodyGeo = new THREE.BoxGeometry(1.6, 1.3, 1.4);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.6, flatShading: true });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.65;
-    body.castShadow = !this.isSoftwareGl;
-    body.receiveShadow = !this.isSoftwareGl;
-    houseGroup.add(body);
-
-    // 2. Distinct Roof Shape based on literature type
-    let roofMesh;
-    const roofMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.45, flatShading: true });
-
-    if (spec.shape === 'dome') {
-      roofMesh = new THREE.Mesh(new THREE.SphereGeometry(1.05, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), roofMat);
-      roofMesh.position.y = 1.3;
-    } else if (spec.shape === 'tower') {
-      roofMesh = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.4, 4), roofMat);
-      roofMesh.position.y = 1.3 + 0.7;
-      roofMesh.rotation.y = Math.PI / 4;
-    } else if (spec.shape === 'hall') {
-      roofMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.2, 0.9, 4), roofMat);
-      roofMesh.position.y = 1.3 + 0.45;
-      roofMesh.rotation.y = Math.PI / 4;
-    } else {
-      // Gable villa/cottage roof
-      const gableGeo = new THREE.ConeGeometry(1.3, 0.85, 4);
-      gableGeo.rotateY(Math.PI / 4);
-      roofMesh = new THREE.Mesh(gableGeo, roofMat);
-      roofMesh.position.y = 1.3 + 0.42;
-    }
-
-    roofMesh.castShadow = !this.isSoftwareGl;
-    houseGroup.add(roofMesh);
-
-    // 3. Front Door & Windows
-    const door = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.35, 0.65),
-      new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.8 })
-    );
-    door.position.set(0, 0.35, 0.71);
-    houseGroup.add(door);
-
-    const windowMat = new THREE.MeshStandardMaterial({
-      color: 0x90caf9,
-      roughness: 0.2,
-      emissive: 0x223344,
-      emissiveIntensity: 0.2
-    });
-
-    const win1 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.35), windowMat);
-    win1.position.set(-0.48, 0.75, 0.71);
-    houseGroup.add(win1);
-
-    const win2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.35), windowMat);
-    win2.position.set(0.48, 0.75, 0.71);
-    houseGroup.add(win2);
-
-    // 4. Floating Literature Indicator Pill
-    const tagCanvas = document.createElement('canvas');
-    tagCanvas.width = 128;
-    tagCanvas.height = 48;
-    const ctx = tagCanvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.roundRect(4, 4, 120, 40, 20);
-    ctx.fill();
-    ctx.strokeStyle = '#2a8a74';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    ctx.fillStyle = '#1e3a34';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('文獻 📖', 64, 24);
-
-    const tagTexture = new THREE.CanvasTexture(tagCanvas);
-    const tagSpriteMat = new THREE.SpriteMaterial({ map: tagTexture, transparent: true, opacity: 0.85 });
-    const tagSprite = new THREE.Sprite(tagSpriteMat);
-    tagSprite.scale.set(1.4, 0.55, 1);
-    tagSprite.position.set(0, 2.5, 0);
-    houseGroup.add(tagSprite);
-
-    // Save metadata
-    houseGroup.userData = {
-      id: spec.id,
-      islandId: islandId,
-      title: spec.title,
-      type: 'literature',
-      color: roofColor
-    };
-
-    return houseGroup;
-  }
-
-  // --- Bridges and Bay Sailing Boats ---
+  // --- Cartoon Arch Bridges & Striped Sailboats ---
   buildBridgesAndBoats() {
-    // 1. Curved Wooden Bridge between Center & Island 1 (Left)
-    this.createBridge(new THREE.Vector3(-1.8, 1.4, 0), new THREE.Vector3(-11.5, 1.2, 2.2));
+    const keys = ['island-01', 'island-02', 'island-03', 'island-04', 'island-05', 'island-06', 'island-07'];
+    keys.forEach((key) => {
+      const def = this.islandDefs[key];
+      const start = new THREE.Vector3(Math.cos(def.angle) * 8.8, 1.4, Math.sin(def.angle) * 8.8);
+      const end = new THREE.Vector3(Math.cos(def.angle) * 19.5, 1.2, Math.sin(def.angle) * 19.5);
+      this.createCartoonBridge(start, end);
+    });
 
-    // 2. Curved Wooden Bridge between Center & Island 2 (Right)
-    this.createBridge(new THREE.Vector3(1.8, 1.4, 0), new THREE.Vector3(11.5, 1.2, 1.6));
-
-    // 3. Stylized Low-poly Sailboats cruising in the lagoon
-    const boat1 = this.createBoat(new THREE.Vector3(-8, 0.1, -12), 0.7);
-    this.scene.add(boat1);
-    this.boats.push({ mesh: boat1, speed: 0.008, radius: 14, angle: 0 });
-
-    const boat2 = this.createBoat(new THREE.Vector3(10, 0.1, -10), 0.6);
-    this.scene.add(boat2);
-    this.boats.push({ mesh: boat2, speed: 0.006, radius: 16, angle: Math.PI });
+    // Cute cruising sailboats with striped sails
+    const boat1 = this.createCartoonBoat(new THREE.Vector3(-13, 0.1, -15), 0.85, 0xf43f5e);
+    const boat2 = this.createCartoonBoat(new THREE.Vector3(15, 0.1, 12), 0.75, 0x38bdf8);
+    const boat3 = this.createCartoonBoat(new THREE.Vector3(18, 0.1, -14), 0.7, 0xfbbf24);
+    this.animatedObjects.push(
+      { obj: boat1, type: 'boat', speed: 0.38, radius: 18, center: new THREE.Vector3(0, 0, 0), phase: 0 },
+      { obj: boat2, type: 'boat', speed: -0.32, radius: 22, center: new THREE.Vector3(0, 0, 0), phase: 2.4 },
+      { obj: boat3, type: 'boat', speed: 0.28, radius: 16, center: new THREE.Vector3(0, 0, 0), phase: 4.6 }
+    );
   }
 
-  createBridge(start, end) {
-    const bridgeGroup = new THREE.Group();
+  createCartoonBridge(start, end) {
+    const bridge = new THREE.Group();
     const distance = start.distanceTo(end);
-    const dir = new THREE.Vector3().subVectors(end, start).normalize();
+    const plankMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.7 }); // Sunny yellow planks
+    const railMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.8 });  // Orange handrails
 
-    const plankCount = 14;
-    const plankMat = new THREE.MeshStandardMaterial({ color: 0xa87747, roughness: 0.85, flatShading: true });
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x6e4b2a, roughness: 0.9 });
+    const steps = 11;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const pos = new THREE.Vector3().lerpVectors(start, end, t);
+      pos.y += Math.sin(t * Math.PI) * 1.1; // Gentle cheerful parabolic arch
 
-    for (let i = 0; i <= plankCount; i++) {
-      const t = i / plankCount;
-      const x = THREE.MathUtils.lerp(start.x, end.x, t);
-      const z = THREE.MathUtils.lerp(start.z, end.z, t);
-      // Arch curve in Y
-      const archY = Math.sin(t * Math.PI) * 0.9;
-      const y = THREE.MathUtils.lerp(start.y, end.y, t) + archY;
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, distance / steps * 0.95), plankMat);
+      plank.position.copy(pos);
+      plank.lookAt(end);
+      bridge.add(plank);
 
-      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.1, 1.6), plankMat);
-      plank.position.set(x, y, z);
-      plank.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
-      plank.receiveShadow = !this.isSoftwareGl;
-      bridgeGroup.add(plank);
-
-      if (i % 3 === 0) {
-        // Vertical support piles
-        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, y + 0.3, 6), postMat);
-        pile.position.set(x, y / 2, z);
-        bridgeGroup.add(pile);
+      if (i === 3 || i === 8) {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, pos.y + 0.8, 8), railMat);
+        pillar.position.set(pos.x, pos.y / 2 - 0.4, pos.z);
+        bridge.add(pillar);
       }
     }
-
-    this.scene.add(bridgeGroup);
+    this.scene.add(bridge);
   }
 
-  createBoat(pos, scale = 1) {
+  createCartoonBoat(pos, scale = 1, sailColor = 0xf43f5e) {
     const boat = new THREE.Group();
     boat.position.copy(pos);
-    boat.scale.setScalar(scale);
+    boat.scale.set(scale, scale, scale);
 
-    // Hull
-    const hullMat = new THREE.MeshStandardMaterial({ color: 0x8a532d, roughness: 0.7, flatShading: true });
-    const hull = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.4, 5), hullMat);
+    // Chubby round boat hull
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.5, 2.6, 8), hullMat);
     hull.rotation.z = Math.PI / 2;
-    hull.scale.set(0.5, 1, 0.6);
+    hull.rotation.y = Math.PI / 2;
     boat.add(hull);
 
     // Mast
-    const mast = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6),
-      new THREE.MeshStandardMaterial({ color: 0x473322 })
-    );
-    mast.position.y = 0.9;
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x92400e }));
+    mast.position.set(0, 1.2, 0);
     boat.add(mast);
 
-    // White Sail
+    // Striped Cartoon Sail
+    const sailMat = new THREE.MeshStandardMaterial({ color: sailColor, roughness: 0.3, side: THREE.DoubleSide });
     const sailGeo = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-      0, 0.2, 0,
-      0, 1.7, 0,
-      1.1, 0.4, 0
-    ]);
-    sailGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    const verts = new Float32Array([0, 0, 0, 0, 2.2, 0, 1.2, 0.3, 0]);
+    sailGeo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
     sailGeo.computeVertexNormals();
-
-    const sail = new THREE.Mesh(
-      sailGeo,
-      new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.4 })
-    );
+    const sail = new THREE.Mesh(sailGeo, sailMat);
+    sail.position.set(0, 0.3, 0);
     boat.add(sail);
 
+    this.scene.add(boat);
     return boat;
   }
 
-  // --- Little People (Villagers) strolling on islands ---
-  buildVillagers() {
-    // 3 villagers on center island, 2 on island 1, 2 on island 2
-    const spots = [
-      { island: 'island-center', center: new THREE.Vector3(0, 2.05, -2), radius: 5.5, speed: 0.012, color: 0x3b82f6 },
-      { island: 'island-center', center: new THREE.Vector3(0, 2.05, -2), radius: 6.8, speed: -0.009, color: 0xe46a5e },
-      { island: 'island-01', center: new THREE.Vector3(-18.5, 1.75, 3.5), radius: 4.8, speed: 0.015, color: 0x10b981 },
-      { island: 'island-01', center: new THREE.Vector3(-18.5, 1.75, 3.5), radius: 3.5, speed: -0.011, color: 0xf59e0b },
-      { island: 'island-02', center: new THREE.Vector3(18.5, 1.75, 2.5), radius: 5.0, speed: 0.013, color: 0x8b5cf6 },
-      { island: 'island-02', center: new THREE.Vector3(18.5, 1.75, 2.5), radius: 3.8, speed: -0.014, color: 0x06b6d4 }
-    ];
+  // --- Cartoon Lollipop Trees, Mushrooms & Daisies ---
+  decorateCartoonIsland(group, topY, maxRadius) {
+    // 1. Cute Round Lollipop Trees in 5 vibrant candy colors
+    const treePalette = [0xf472b6, 0x4ade80, 0x38bdf8, 0xfbbf24, 0xc084fc]; // Pink blossom, mint, cyan, sunflower, lilac
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + Math.random() * 0.4;
+      const r = maxRadius * (0.75 + Math.random() * 0.22);
+      const col = treePalette[i % treePalette.length];
+      this.createLollipopTree(group, new THREE.Vector3(Math.cos(a) * r, topY, Math.sin(a) * r), col, 0.8 + Math.random() * 0.4);
+    }
 
-    spots.forEach((cfg) => {
-      const person = this.createPerson(cfg.color);
-      this.scene.add(person);
-      this.villagers.push({
-        mesh: person,
-        center: cfg.center,
-        radius: cfg.radius,
-        speed: cfg.speed,
-        angle: Math.random() * Math.PI * 2,
-        baseY: cfg.center.y
-      });
-    });
+    // 2. Cute Cartoon Red Mushrooms with white dots
+    for (let j = 0; j < 4; j++) {
+      const ma = Math.random() * Math.PI * 2;
+      const mr = maxRadius * (0.6 + Math.random() * 0.3);
+      this.createCartoonMushroom(group, new THREE.Vector3(Math.cos(ma) * mr, topY, Math.sin(ma) * mr));
+    }
+
+    // 3. Cheerful Daisies
+    for (let k = 0; k < 5; k++) {
+      const fa = Math.random() * Math.PI * 2;
+      const fr = maxRadius * (0.5 + Math.random() * 0.35);
+      this.createDaisy(group, new THREE.Vector3(Math.cos(fa) * fr, topY, Math.sin(fa) * fr));
+    }
   }
 
-  createPerson(color) {
-    const person = new THREE.Group();
-
-    // Body
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.16, 0.45, 6),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.7, flatShading: true })
-    );
-    body.position.y = 0.35;
-    person.add(body);
-
-    // Head
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.13, 6, 6),
-      new THREE.MeshStandardMaterial({ color: 0xfad0b0, roughness: 0.8, flatShading: true })
-    );
-    head.position.y = 0.65;
-    person.add(head);
-
-    // Hat / Hair cap
-    const cap = new THREE.Mesh(
-      new THREE.ConeGeometry(0.16, 0.14, 6),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 })
-    );
-    cap.position.y = 0.78;
-    person.add(cap);
-
-    return person;
-  }
-
-  // --- Environment Trees & Nature Decor ---
-  createTree(group, pos, scale = 1) {
+  createLollipopTree(group, pos, foliageColor, scale = 1) {
     const tree = new THREE.Group();
     tree.position.copy(pos);
-    tree.scale.setScalar(scale);
+    tree.scale.set(scale, scale, scale);
 
-    // Trunk
+    // Slim trunk
     const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.16, 0.9, 6),
-      new THREE.MeshStandardMaterial({ color: 0x6e4726, roughness: 0.9, flatShading: true })
+      new THREE.CylinderGeometry(0.12, 0.16, 1.1, 8),
+      new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 })
     );
-    trunk.position.y = 0.45;
-    trunk.castShadow = !this.isSoftwareGl;
+    trunk.position.y = 0.55;
     tree.add(trunk);
 
-    // Low-poly Foliage (3 tiered cones)
-    const leafMat = new THREE.MeshStandardMaterial({
-      color: 0x2e7d56,
-      roughness: 0.8,
-      flatShading: true
-    });
-
-    const c1 = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.9, 7), leafMat);
-    c1.position.y = 1.1;
-    c1.castShadow = !this.isSoftwareGl;
-    tree.add(c1);
-
-    const c2 = new THREE.Mesh(new THREE.ConeGeometry(0.65, 0.8, 7), leafMat);
-    c2.position.y = 1.6;
-    c2.castShadow = !this.isSoftwareGl;
-    tree.add(c2);
-
-    const c3 = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.65, 7), leafMat);
-    c3.position.y = 2.1;
-    c3.castShadow = !this.isSoftwareGl;
-    tree.add(c3);
+    // Round puffed lollipop sphere canopy
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(0.85, 12, 12),
+      new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.4, flatShading: true })
+    );
+    puff.position.y = 1.6;
+    puff.castShadow = !this.isSoftwareGl;
+    tree.add(puff);
 
     group.add(tree);
   }
 
-  decorateIsland(group, topY, maxRadius, type) {
-    // Random trees & flowering bushes on islands
-    const count = 7;
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
-      const dist = 3.5 + Math.random() * (maxRadius - 4.2);
-      const x = Math.cos(angle) * dist;
-      const z = Math.sin(angle) * dist;
+  createCartoonMushroom(group, pos) {
+    const shroom = new THREE.Group();
+    shroom.position.copy(pos);
 
-      this.createTree(group, new THREE.Vector3(x, topY, z), 0.8 + Math.random() * 0.4);
-    }
+    // White stem
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    stem.position.y = 0.12;
+    shroom.add(stem);
+
+    // Red cap
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.22, 8), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+    cap.position.y = 0.32;
+    shroom.add(cap);
+
+    group.add(shroom);
   }
 
-  // --- Theme & Day / Night Handling ---
-  applyTheme(themeId) {
-    this.currentTheme = themeId;
-    if (themeId === 'mint') {
-      this.scene.background = new THREE.Color(0xe7f5f0);
-      this.scene.fog = new THREE.FogExp2(0xe7f5f0, 0.015);
-      if (this.oceanMat) this.oceanMat.color.setHex(0x5ea89b);
-    } else if (themeId === 'paper') {
-      this.scene.background = new THREE.Color(0xf8f4ea);
-      this.scene.fog = new THREE.FogExp2(0xf8f4ea, 0.015);
-      if (this.oceanMat) this.oceanMat.color.setHex(0x6fb0a3);
-    } else if (themeId === 'ink') {
-      this.scene.background = new THREE.Color(0x13191c);
-      this.scene.fog = new THREE.FogExp2(0x13191c, 0.018);
-      if (this.oceanMat) this.oceanMat.color.setHex(0x1a3835);
-    }
+  createDaisy(group, pos) {
+    const daisy = new THREE.Group();
+    daisy.position.copy(pos);
+
+    // Yellow center
+    const center = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+    center.position.y = 0.12;
+    daisy.add(center);
+
+    // White petals
+    const petals = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.25, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+    petals.rotation.x = -Math.PI / 2;
+    petals.position.y = 0.11;
+    daisy.add(petals);
+
+    group.add(daisy);
   }
 
-  applyDayNight(mode) {
-    this.dayNightMode = mode;
-    if (mode === 'day') {
-      this.dirLight.intensity = 1.35;
-      this.dirLight.color.setHex(0xfff6e6);
-      this.dirLight.position.set(25, 40, 20);
-      this.ambientLight.intensity = 0.55;
-      this.lighthouseBeacon.intensity = 0;
-    } else if (mode === 'sunset') {
-      this.dirLight.intensity = 1.1;
-      this.dirLight.color.setHex(0xff9944);
-      this.dirLight.position.set(35, 18, -25);
-      this.ambientLight.intensity = 0.4;
-      this.ambientLight.color.setHex(0xffd5b3);
-      this.lighthouseBeacon.intensity = 1.5;
-    } else if (mode === 'night') {
-      this.dirLight.intensity = 0.25;
-      this.dirLight.color.setHex(0x8ab4f8);
-      this.dirLight.position.set(-15, 30, -20);
-      this.ambientLight.intensity = 0.25;
-      this.ambientLight.color.setHex(0x38546b);
-      this.lighthouseBeacon.intensity = 4.0;
-    }
+  // --- Cute Cartoon Villagers ---
+  buildVillagers() {
+    const configs = [
+      { color: 0x06b6d4, speed: 0.55, radius: 5.2, offset: 0 },
+      { color: 0xf43f5e, speed: 0.45, radius: 4.8, offset: 2.1 },
+      { color: 0xf59e0b, speed: 0.5, radius: 5.6, offset: 4.2 }
+    ];
+
+    configs.forEach((cfg) => {
+      const person = this.createCartoonPerson(cfg.color);
+      this.centerIslandGroup.add(person);
+      this.villagers.push({ person, speed: cfg.speed, radius: cfg.radius, offset: cfg.offset, angle: cfg.offset });
+    });
   }
 
-  setReducedMotion(enabled) {
-    this.reducedMotion = enabled;
+  createCartoonPerson(color) {
+    const person = new THREE.Group();
+    // Cute big round head
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.5 })
+    );
+    head.position.y = 1.05;
+    person.add(head);
+
+    // Cute cap / hat
+    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+    hat.position.y = 1.35;
+    person.add(hat);
+
+    // Body
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.26, 0.65, 8),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.6 })
+    );
+    body.position.y = 0.5;
+    person.add(body);
+
+    person.position.y = 2.2;
+    return person;
   }
 
-  // --- Interaction & Raycasting ---
-  onPointerMove(event) {
+  // --- Pointer & Raycasting Interactions ---
+  onPointerMove(e) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+    this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     this.checkHover();
+  }
+
+  onPointerDown(e) {
+    this.pointerDownPos = { x: e.clientX, y: e.clientY };
   }
 
   checkHover() {
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    // Raycast against building meshes and island groups
     const targets = [];
     this.buildingMeshes.forEach((g) => targets.push(...g.children));
-    this.islandMeshes.forEach((g) => targets.push(...g.children));
 
-    const intersects = this.raycaster.intersectObjects(targets, true);
-
-    if (intersects.length > 0) {
-      let found = intersects[0].object;
-      while (found && !found.userData?.type && found.parent) {
-        found = found.parent;
-      }
-      if (found && found.userData?.type) {
-        this.renderer.domElement.style.cursor = 'pointer';
-        return;
-      }
-    }
-    this.renderer.domElement.style.cursor = 'default';
+    const hits = this.raycaster.intersectObjects(targets, true);
+    document.body.style.cursor = hits.length > 0 ? 'pointer' : 'default';
   }
 
-  onClick(event) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  onClick(e) {
+    if (this.pointerDownPos) {
+      const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
+      if (dist > 6) return;
+    }
 
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    // 1. First priority: Check Literature / Landmark buildings
+    // 1. Check Buildings & Landmarks
     const buildingTargets = [];
     this.buildingMeshes.forEach((g) => buildingTargets.push(...g.children));
     const buildingHits = this.raycaster.intersectObjects(buildingTargets, true);
@@ -1021,20 +1165,14 @@ export class IslandScene {
       while (hit && !hit.userData?.id && hit.parent) {
         hit = hit.parent;
       }
-      if (hit && hit.userData?.id) {
-        if (hit.userData.type === 'literature') {
-          this.focusBuilding(hit);
-          this.onSelectBuilding(hit.userData);
-          return;
-        } else if (hit.userData.type === 'landmark') {
-          this.focusIsland(hit.userData.islandId);
-          this.onSelectIsland(hit.userData.islandId);
-          return;
-        }
+      if (hit && hit.userData?.id && hit.userData.islandId) {
+        this.focusIsland(hit.userData.islandId);
+        this.onSelectIsland(hit.userData.islandId);
+        return;
       }
     }
 
-    // 2. Second priority: Check Islands
+    // 2. Check Island bases
     const islandTargets = [];
     this.islandMeshes.forEach((g) => islandTargets.push(...g.children));
     const islandHits = this.raycaster.intersectObjects(islandTargets, true);
@@ -1047,7 +1185,6 @@ export class IslandScene {
       if (hit && hit.userData?.id) {
         this.focusIsland(hit.userData.id);
         this.onSelectIsland(hit.userData.id);
-        return;
       }
     }
   }
@@ -1057,34 +1194,24 @@ export class IslandScene {
     this.selectedIslandId = islandId;
     this.selectedBuildingId = null;
 
+    const def = this.getIslandDef(islandId);
+    if (!def) return;
+
     if (islandId === 'island-center') {
-      this.cameraTargetPos.set(0, 10, 16);
-      this.controlsTargetPos.set(0, 2.5, -2);
-    } else if (islandId === 'island-01') {
-      this.cameraTargetPos.set(-18.5, 9, 17);
-      this.controlsTargetPos.set(-18.5, 2.2, 3.5);
-    } else if (islandId === 'island-02') {
-      this.cameraTargetPos.set(18.5, 9, 16);
-      this.controlsTargetPos.set(18.5, 2.2, 2.5);
+      this.cameraTargetPos.set(0, 11, 16);
+      this.controlsTargetPos.set(0, 2.5, -1);
+    } else {
+      this.cameraTargetPos.set(def.pos.x * 0.72, 10.5, def.pos.z * 0.72 + 12);
+      this.controlsTargetPos.set(def.pos.x, 2.0, def.pos.z);
     }
-    this.isAnimatingCamera = true;
-  }
-
-  focusBuilding(buildingGroup) {
-    this.selectedBuildingId = buildingGroup.userData.id;
-    const worldPos = new THREE.Vector3();
-    buildingGroup.getWorldPosition(worldPos);
-
-    this.cameraTargetPos.set(worldPos.x, worldPos.y + 4.5, worldPos.z + 8);
-    this.controlsTargetPos.set(worldPos.x, worldPos.y + 1.2, worldPos.z);
     this.isAnimatingCamera = true;
   }
 
   resetToOverview() {
     this.selectedIslandId = null;
     this.selectedBuildingId = null;
-    this.cameraTargetPos.set(0, 20, 36);
-    this.controlsTargetPos.set(0, 1, 0);
+    this.cameraTargetPos.set(0, 36, 52);
+    this.controlsTargetPos.set(0, 0, 0);
     this.isAnimatingCamera = true;
   }
 
@@ -1096,17 +1223,17 @@ export class IslandScene {
     return {
       x: Math.round(vector.x * halfWidth + halfWidth),
       y: Math.round(-vector.y * halfHeight + halfHeight),
-      visible: vector.z < 1.0 // In front of camera
+      visible: vector.z < 1.0
     };
   }
 
   getIslandScreenPosition(islandId) {
-    let pos;
-    if (islandId === 'island-center') pos = new THREE.Vector3(0, 5.2, -2);
-    else if (islandId === 'island-01') pos = new THREE.Vector3(-18.5, 4.8, 3.5);
-    else if (islandId === 'island-02') pos = new THREE.Vector3(18.5, 4.8, 2.5);
-    else return { visible: false };
-    return this.getScreenPosition(pos);
+    const def = this.getIslandDef(islandId);
+    if (!def) return { visible: false };
+
+    const p = def.pos.clone();
+    p.y = def.tagY || 5.0;
+    return this.getScreenPosition(p);
   }
 
   onWindowResize() {
@@ -1117,82 +1244,87 @@ export class IslandScene {
     this.renderer.setSize(width, height);
   }
 
+  setReducedMotion(reduced) {
+    this.reducedMotion = reduced;
+  }
+
   // --- Animation Render Loop ---
   animate() {
-    this.frameId = requestAnimationFrame(this.animate);
+    requestAnimationFrame(() => this.animate());
 
-    const now = performance.now();
-    const delta = Math.min((now - this.lastTime) / 1000, 0.1);
-    this.lastTime = now;
-    const time = (now - this.startTime) / 1000;
+    const delta = this.clock.getDelta();
+    const time = this.clock.getElapsedTime();
 
-    // Smooth camera damping if animating
+    // 1. Camera Spring Interpolation
     if (this.isAnimatingCamera) {
-      this.camera.position.lerp(this.cameraTargetPos, 0.05);
-      this.controls.target.lerp(this.controlsTargetPos, 0.05);
+      const factor = this.reducedMotion ? 0.15 : 0.055;
+      this.camera.position.lerp(this.cameraTargetPos, factor);
+      this.controls.target.lerp(this.controlsTargetPos, factor);
 
-      if (
-        this.camera.position.distanceTo(this.cameraTargetPos) < 0.1 &&
-        this.controls.target.distanceTo(this.controlsTargetPos) < 0.1
-      ) {
+      if (this.camera.position.distanceTo(this.cameraTargetPos) < 0.2) {
+        this.camera.position.copy(this.cameraTargetPos);
+        this.controls.target.copy(this.controlsTargetPos);
         this.isAnimatingCamera = false;
       }
     }
 
-    // Auto slow rotate when idle and motion enabled
-    if (!this.reducedMotion && !this.selectedIslandId && !this.isAnimatingCamera) {
-      this.scene.rotation.y = Math.sin(time * 0.08) * 0.05;
+    // 2. Wave Motion
+    if (!this.reducedMotion && this.oceanMesh && this.oceanInitialY) {
+      const pos = this.oceanMesh.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const wave = Math.sin(x * 0.1 + time * 1.3) * 0.18 + Math.cos(z * 0.1 + time * 1.0) * 0.18;
+        pos.setY(i, this.oceanInitialY[i] + wave);
+      }
+      this.oceanMesh.geometry.attributes.position.needsUpdate = true;
     }
 
-    // Animated elements (rotations, boats, villagers, ocean waves)
+    // 3. Clouds Drifting across the sky
     if (!this.reducedMotion) {
-      // Rotating crests
+      this.clouds.forEach((c) => {
+        c.mesh.position.x += delta * c.speed * 2.5;
+        if (c.mesh.position.x > 75) {
+          c.mesh.position.x = -75;
+        }
+      });
+
+      // 4. Floating Sparkles
+      this.sparkles.forEach((s) => {
+        s.mesh.position.y = s.baseY + Math.sin(time * 2.0 + s.offset) * 0.45;
+        s.mesh.rotation.y += delta * s.speed;
+      });
+
+      // 5. Star Beacon & Boats
       this.animatedObjects.forEach((item) => {
-        item.mesh.rotation.y += item.rotSpeed || 0.01;
+        if (item.type === 'star') {
+          item.obj.rotation.y += delta * 1.2;
+          item.obj.position.y = 7.1 + Math.sin(time * 2.5) * 0.15;
+        } else if (item.type === 'boat') {
+          const a = time * item.speed + item.phase;
+          item.obj.position.x = item.center.x + Math.cos(a) * item.radius;
+          item.obj.position.z = item.center.z + Math.sin(a) * item.radius;
+          item.obj.rotation.y = -a + (item.speed > 0 ? 0 : Math.PI);
+          item.obj.rotation.z = Math.sin(time * 2.8) * 0.09;
+        }
       });
 
-      // Cruising sailboats
-      this.boats.forEach((b) => {
-        b.angle += b.speed;
-        b.mesh.position.x = Math.cos(b.angle) * b.radius;
-        b.mesh.position.z = Math.sin(b.angle) * b.radius;
-        b.mesh.rotation.y = -b.angle - Math.PI / 2;
-        b.mesh.position.y = 0.1 + Math.sin(time * 2 + b.angle) * 0.08;
-      });
-
-      // Strolling villagers
+      // 6. Cartoon Villagers walking
       this.villagers.forEach((v) => {
-        v.angle += v.speed;
-        v.mesh.position.x = v.center.x + Math.cos(v.angle) * v.radius;
-        v.mesh.position.z = v.center.z + Math.sin(v.angle) * v.radius;
-        v.mesh.rotation.y = -v.angle + (v.speed > 0 ? -Math.PI / 2 : Math.PI / 2);
-        // Step bounce
-        v.mesh.position.y = v.baseY + Math.abs(Math.sin(time * 6 + v.angle * 4)) * 0.1;
+        v.angle += delta * v.speed * 0.35;
+        v.person.position.x = Math.cos(v.angle) * v.radius;
+        v.person.position.z = Math.sin(v.angle) * v.radius;
+        v.person.rotation.y = -v.angle - Math.PI / 2;
+        v.person.position.y = 2.2 + Math.abs(Math.sin(time * 7 * v.speed)) * 0.1;
       });
-
-      // Subtle water wave displacement
-      if (this.oceanMesh) {
-        this.oceanMesh.position.y = -0.15 + Math.sin(time * 1.5) * 0.06;
-      }
     }
 
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
 
-    // Emit event for UI HTML label tracking
     if (this.options.onRenderFrame) {
       this.options.onRenderFrame();
     }
-  }
 
-  destroy() {
-    cancelAnimationFrame(this.frameId);
-    window.removeEventListener('resize', this.onWindowResize);
-    this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
-    this.renderer.domElement.removeEventListener('click', this.onClick);
-    this.renderer.dispose();
-    if (this.renderer.domElement.parentElement) {
-      this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
-    }
+    this.renderer.render(this.scene, this.camera);
   }
 }

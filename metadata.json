@@ -1,6 +1,6 @@
 {
-  "name": "彰基糖友島",
-  "description": "跟著彰基糖友島，解鎖糖尿病的秘密吧~",
+  "name": "彰基內分泌健康迷思群島",
+  "description": "彰基內分泌醫療團隊常見健康與疾病迷思解答手冊 · 杜思德醫師",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

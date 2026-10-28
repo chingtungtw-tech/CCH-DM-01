@@ -1,5 +1,7 @@
 /**
- * 彰基糖友島 - 主應用程式邏輯 (State, Sound Synthesizer, Quiz, UI & Storage)
+ * 彰基內分泌健康迷思群島 - 主應用程式邏輯
+ * 核心樞紐：彰基內分泌新陳代謝醫療中心 · 杜思德主治醫師
+ * 七大主題島嶼：糖尿病、健康減重、骨質疏鬆、肌少症、代謝症候群、牙周共病、甲狀腺疾病
  */
 
 import { IslandScene } from './scene.js';
@@ -17,83 +19,56 @@ class IslandApp {
       reducedMotion: false,
       soundEnabled: false,
       visitedIslands: [],
-      readLiterature: [],
-      unlockedCards: ['card-01'],
+      readMyths: [],
+      unlockedCards: ['badge-welcome'],
       quizScores: {},
       dailyKeys: 3,
       lastKeyDate: new Date().toDateString(),
-      chestOpenedToday: 0
+      userName: '健康守護者'
     };
 
-    // UI State
-    this.activeIsland = null;
-    this.activeBuilding = null;
-    this.activeModal = null;
-    this.searchQuery = '';
-
-    // Audio context for synthesizer
     this.audioCtx = null;
     this.bgmTimer = null;
-
-    this.init();
+    this.bgmAudio = null;
   }
 
   async init() {
     this.loadState();
     await this.loadContent();
-    this.applyTheme(this.state.theme);
+
     this.initScene();
-    this.setupUIEvents();
+    this.setupUI();
     this.setupClock();
     this.updateProgressUI();
-    this.updateFloatingLabels();
     this.checkDailyKeys();
 
-    // Remove loading screen
+    // Hide loading screen once ready
     const loader = document.getElementById('app-loader');
     if (loader) {
-      loader.classList.add('fade-out');
-      setTimeout(() => loader.remove(), 500);
+      setTimeout(() => {
+        loader.classList.add('fade-out');
+        setTimeout(() => loader.remove(), 600);
+      }, 400);
     }
   }
 
   // --- State Persistence ---
   loadState() {
     try {
-      const saved = localStorage.getItem('cch_dm_state');
+      const saved = localStorage.getItem('cch_myth_archipelago_state');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        this.state = { ...this.state, ...parsed };
+        this.state = { ...this.state, ...JSON.parse(saved) };
       }
     } catch (e) {
-      console.warn('Could not read state from localStorage', e);
-    }
-
-    // Check system preference for reduced motion
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      this.state.reducedMotion = true;
+      console.warn('LocalStorage error:', e);
     }
   }
 
   saveState() {
     try {
-      localStorage.setItem('cch_dm_state', JSON.stringify(this.state));
-      this.updateProgressUI();
+      localStorage.setItem('cch_myth_archipelago_state', JSON.stringify(this.state));
     } catch (e) {
-      console.warn('Could not save state to localStorage', e);
-    }
-  }
-
-  resetProgress() {
-    if (confirm('確定要重置所有探索進度、圖鑑卡片與測驗紀錄嗎？')) {
-      localStorage.removeItem('cch_dm_state');
-      this.state.visitedIslands = [];
-      this.state.readLiterature = [];
-      this.state.unlockedCards = ['card-01'];
-      this.state.quizScores = {};
-      this.saveState();
-      this.showToast('探索進度已成功重置');
-      this.updateProgressUI();
+      console.warn('LocalStorage save error:', e);
     }
   }
 
@@ -110,7 +85,7 @@ class IslandApp {
       this.content = await res.json();
     } catch (err) {
       console.error('Failed to load content.json', err);
-      alert('載入島嶼內容時發生錯誤，請重新整理網頁。');
+      alert('載入島嶼衛教內容時發生錯誤，請重新整理網頁。');
     }
   }
 
@@ -125,7 +100,6 @@ class IslandApp {
         dayNightMode: this.state.dayNight,
         reducedMotion: this.state.reducedMotion,
         onSelectIsland: (islandId) => this.openIslandDrawer(islandId),
-        onSelectBuilding: (bldgData) => this.openBuildingDetail(bldgData),
         onRenderFrame: () => this.updateFloatingLabels()
       });
     } catch (err) {
@@ -174,29 +148,28 @@ class IslandApp {
     this.state.theme = themeId;
     document.documentElement.setAttribute('data-theme', themeId);
 
-    // Update active state in theme buttons
-    document.querySelectorAll('.theme-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.theme === themeId);
+    document.querySelectorAll('.theme-btn[data-theme]').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-theme') === themeId);
     });
 
     if (this.scene) {
-      this.scene.applyTheme(themeId);
+      this.scene.applyThemeColors(themeId);
     }
     this.saveState();
   }
 
-  setDayNight(mode) {
+  applyDayNight(mode) {
     this.state.dayNight = mode;
     document.querySelectorAll('.daynight-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.mode === mode);
+      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
     });
 
     if (this.scene) {
-      this.scene.applyDayNight(mode);
+      this.scene.applyDayNightLighting(mode);
     }
     this.saveState();
-    this.showToast(`已切換至 ${mode === 'day' ? '晨光日間' : mode === 'sunset' ? '暖陽黃昏' : '靜謐星夜'}`);
-    this.unlockCard('card-06');
+    const names = { day: '晨光日間', sunset: '暖陽黃昏', night: '沉靜星夜' };
+    this.showToast(`已切換為「${names[mode]}」光線`);
   }
 
   toggleReducedMotion() {
@@ -234,23 +207,33 @@ class IslandApp {
     setInterval(updateClock, 1000);
   }
 
-  // --- Floating 3D Island Labels ---
+  // --- Floating 3D Island Labels (Strict Screen Bounds Clamping) ---
   updateFloatingLabels() {
     if (!this.scene) return;
 
-    const islandIds = ['island-center', 'island-01', 'island-02'];
+    const islandIds = [
+      'island-center',
+      'island-01',
+      'island-02',
+      'island-03',
+      'island-04',
+      'island-05',
+      'island-06',
+      'island-07'
+    ];
+
     islandIds.forEach((id) => {
       const el = document.getElementById(`tag-${id}`);
       if (!el) return;
 
       const screen = this.scene.getIslandScreenPosition(id);
-      const margin = 40;
+      const margin = 20;
       if (
         screen &&
         screen.visible &&
         screen.x >= margin &&
         screen.x <= window.innerWidth - margin &&
-        screen.y >= 50 &&
+        screen.y >= 45 &&
         screen.y <= window.innerHeight - 80
       ) {
         el.style.display = 'block';
@@ -269,18 +252,31 @@ class IslandApp {
       return;
     }
 
-    const island = this.content.islands.find((i) => i.id === islandId);
+    const island = this.content?.islands.find((isl) => isl.id === islandId);
     if (!island) return;
 
-    this.activeIsland = island;
+    // Track visit & badges
     if (!this.state.visitedIslands.includes(islandId)) {
       this.state.visitedIslands.push(islandId);
       this.saveState();
+      this.updateProgressUI();
+      this.triggerConfetti();
+      this.showToast(`✨ 抵達「${island.name}」！`);
     }
 
-    // Award cards
-    if (islandId === 'island-01') this.unlockCard('card-02');
-    if (islandId === 'island-02') this.unlockCard('card-03');
+    // Unlock badges
+    const badgeMap = {
+      'island-01': 'badge-diabetes',
+      'island-02': 'badge-weight',
+      'island-03': 'badge-bone',
+      'island-04': 'badge-muscle',
+      'island-05': 'badge-metabolic',
+      'island-06': 'badge-dental',
+      'island-07': 'badge-thyroid'
+    };
+    if (badgeMap[islandId]) {
+      this.unlockCard(badgeMap[islandId]);
+    }
 
     const drawer = document.getElementById('content-drawer');
     const drawerBody = document.getElementById('drawer-body');
@@ -290,97 +286,78 @@ class IslandApp {
       <div class="drawer-header-content">
         <div class="flex items-center justify-between mb-2">
           <span class="category-pill">${island.group}</span>
-          <span class="island-order-badge">島嶼 #0${island.order}</span>
+          <span class="island-order-badge font-bold">島嶼 #0${island.order}</span>
         </div>
-        <h2 class="text-2xl font-bold mb-1 text-primary-heading">${island.name}</h2>
-        <p class="text-sm text-muted mb-4">${island.intro}</p>
+        <h2 class="text-2xl font-bold mb-1 text-primary-heading">${island.icon} ${island.name}</h2>
+        <p class="text-sm text-muted mb-3 leading-relaxed">${island.intro}</p>
+        
         <div class="landmark-banner p-3 rounded-xl mb-4 bg-surface-alt border border-line">
-          <div class="flex items-center gap-2 font-bold text-sm text-primary">
-            <span>🏛️ 獨特地標建築</span>
+          <div class="flex items-center gap-2 font-bold text-sm text-primary mb-1">
+            <span>🏛️ 特色地標建築</span>
             <span>${island.landmark}</span>
           </div>
-          <p class="text-xs text-muted mt-1">${island.landmarkDesc}</p>
+          <p class="text-xs text-muted leading-relaxed">${island.landmarkDesc}</p>
+        </div>
+
+        <!-- Key Indicators Pill Row -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          ${island.keyStats.map(st => `
+            <div class="stat-card p-2 text-center rounded-xl bg-surface-alt border border-line">
+              <div class="text-[11px] text-muted">${st.label}</div>
+              <div class="text-xs font-bold text-primary mt-0.5">${st.value}</div>
+            </div>
+          `).join('')}
         </div>
       </div>
 
       <div class="section-tabs mb-4 flex gap-2 border-b border-line pb-2">
-        <button class="tab-btn active" data-tab="knowledge">📖 知識重點 (${island.points.length})</button>
-        <button class="tab-btn" data-tab="literature">🏙️ 文獻城市 (${island.literature.length} 棟房子)</button>
-        <button class="tab-btn" data-tab="quiz">🎯 島嶼小測驗</button>
+        <button class="tab-btn active" data-tab="myths">💡 迷思破解全清單 (${island.myths.length})</button>
+        <button class="tab-btn" data-tab="quiz">🎯 島嶼隨堂測驗 (${island.quiz ? island.quiz.length : 0})</button>
       </div>
 
-      <div id="tab-pane-knowledge" class="tab-pane active space-y-3">
-        ${island.points.map((pt) => `
-          <div class="card p-4 rounded-xl border border-line bg-surface">
-            <div class="flex items-center gap-2 mb-1.5">
-              <span class="point-tag text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">${pt.tag}</span>
-              <h4 class="font-bold text-base text-ink">${pt.title}</h4>
+      <div id="tab-pane-myths" class="tab-pane active space-y-3">
+        ${island.myths.map((m, idx) => `
+          <div class="card p-4 rounded-xl border border-line bg-surface hover:border-primary transition">
+            <div class="flex items-start gap-2 mb-2">
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 flex-shrink-0">迷思 #${idx + 1}</span>
+              <h4 class="font-bold text-base text-ink">${m.myth}</h4>
             </div>
-            <p class="text-sm text-ink leading-relaxed">${pt.content}</p>
+            <div class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100 text-xs text-emerald-950 mb-2 leading-relaxed">
+              <div class="font-bold text-emerald-800 mb-0.5">✅ 彰基醫學團隊解答真相：</div>
+              ${m.truth}
+            </div>
+            <div class="text-xs text-muted flex items-start gap-1.5 pt-1 border-t border-line">
+              <span class="text-primary font-bold">🎯 行動建議：</span>
+              <span>${m.action}</span>
+            </div>
           </div>
         `).join('')}
-      </div>
 
-      <div id="tab-pane-literature" class="tab-pane hidden space-y-3">
-        <div class="bg-blue-50/70 p-3 rounded-xl text-xs text-blue-900 border border-blue-100 flex items-start gap-2">
-          <span>💡</span>
-          <div>
-            <strong>文獻知識島城市法則：</strong>每棟房子代表一篇實證文獻，屋頂色彩與造形對應文獻種類。點擊可展開 APA 引用一鍵複製與 DOI 開放連結。
-          </div>
+        <div class="p-3 bg-surface-alt border border-line rounded-xl text-xs text-muted text-center mt-3">
+          ${this.content.generalReminder}
         </div>
-        ${island.literature.map((lit) => `
-          <div class="card literature-card p-4 rounded-xl border border-line bg-surface hover:shadow-md transition cursor-pointer" data-lit-id="${lit.id}">
-            <div class="flex items-start justify-between gap-2 mb-1">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="w-3 h-3 rounded-full inline-block" style="background-color: ${lit.roofColor};"></span>
-                <span class="text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-700">${lit.type}</span>
-                <span class="text-xs text-muted font-medium">${lit.year} 年</span>
-              </div>
-              <span class="badge-status text-xs ${lit.retracted ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-700'} px-2 py-0.5 rounded">
-                ${lit.retracted ? '⚠️ 已撤回' : '✓ 同行評審'}
-              </span>
-            </div>
-            <h4 class="font-bold text-sm text-ink mt-1 hover:text-primary transition">${lit.title}</h4>
-            <p class="text-xs text-muted mt-1">作者：${lit.authors.join('、')}</p>
-            <p class="text-xs text-ink/80 mt-2 bg-surface-alt p-2 rounded-lg leading-relaxed">${lit.summary}</p>
-            <div class="flex items-center justify-between mt-3 pt-2 border-t border-line/60">
-              <span class="text-xs text-primary font-bold">點擊查看 APA 引用 & 詳情 →</span>
-              <span class="text-xs text-muted">DOI: ${lit.doi}</span>
-            </div>
-          </div>
-        `).join('')}
       </div>
 
       <div id="tab-pane-quiz" class="tab-pane hidden space-y-4">
-        <div class="bg-amber-50/80 p-3 rounded-xl text-xs text-amber-900 border border-amber-200">
-          <strong>🎯 ${island.name} 隨堂測驗：</strong>共 3 題實證知識題，完成後可獲得榮譽健康評分與成就卡片！
-        </div>
-        <div id="quiz-container-${island.id}"></div>
+        ${this.renderQuizHTML(island)}
       </div>
     `;
 
-    // Tab switching inside drawer
-    drawer.querySelectorAll('.tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        drawer.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-        drawer.querySelectorAll('.tab-pane').forEach((p) => p.classList.add('hidden'));
-        btn.classList.add('active');
-        const pane = document.getElementById(`tab-pane-${btn.dataset.tab}`);
-        if (pane) pane.classList.remove('hidden');
+    // Bind tab switching
+    drawerBody.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget.getAttribute('data-tab');
+        drawerBody.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+
+        drawerBody.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.add('hidden'));
+        const activePane = drawerBody.querySelector(`#tab-pane-${target}`);
+        if (activePane) activePane.classList.remove('hidden');
       });
     });
 
-    // Literature card click inside drawer
-    drawer.querySelectorAll('.literature-card').forEach((card) => {
-      card.addEventListener('click', () => {
-        const litId = card.dataset.litId;
-        const lit = island.literature.find((l) => l.id === litId);
-        if (lit) this.openBuildingDetail({ ...lit, islandId: island.id });
-      });
-    });
-
-    // Render Quiz
-    this.renderIslandQuiz(island);
+    // Bind quiz submission
+    this.bindQuizEvents(drawerBody, island);
 
     drawer.classList.add('open');
   }
@@ -388,868 +365,836 @@ class IslandApp {
   closeDrawer() {
     const drawer = document.getElementById('content-drawer');
     if (drawer) drawer.classList.remove('open');
-    if (this.scene) this.scene.resetToOverview();
   }
 
-  // --- Central Library Modal ---
+  // --- Central Medical Hub Modal (彰化基督教醫院 內分泌暨新陳代謝科 - 全體醫師一覽) ---
   openCenterIslandModal() {
-    this.unlockCard('card-01');
-    const modal = document.getElementById('central-library-modal');
-    if (!modal) return;
+    const central = this.content?.central;
+    if (!central) return;
 
-    // Aggregate all literature from both islands
-    const allLits = [];
-    this.content.islands.forEach((isl) => {
-      isl.literature.forEach((lit) => {
-        allLits.push({ ...lit, islandName: isl.name, islandId: isl.id });
+    // Track Central visit
+    if (!this.state.visitedIslands.includes('island-center')) {
+      this.state.visitedIslands.push('island-center');
+      this.saveState();
+      this.updateProgressUI();
+    }
+    this.unlockCard('badge-welcome');
+
+    let modal = document.getElementById('modal-central-hub');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-central-hub';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
+
+    const doctors = central.doctors || [];
+
+    modal.innerHTML = `
+      <div class="modal-card modal-large" style="max-width: 960px;">
+        <div class="modal-header">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl">🏛️</span>
+            <div>
+              <h3 class="modal-title font-bold text-lg text-primary">${central.name}</h3>
+              <p class="text-xs text-muted">${central.title} · 全體主治醫師與專科門診一覽（共 ${doctors.length} 位專科醫師）</p>
+            </div>
+          </div>
+          <button class="btn-modal-close" id="btn-close-central">✕</button>
+        </div>
+
+        <div class="modal-body space-y-4 max-h-[78vh] overflow-y-auto pr-1">
+          <!-- Overview Card -->
+          <div class="card p-3.5 rounded-xl border border-line bg-surface-alt flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs leading-relaxed text-muted">
+              ${central.intro}
+            </div>
+            <div class="flex flex-wrap gap-2 flex-shrink-0">
+              <a href="https://www1.cch.org.tw/opd/service-e.aspx?id=0107&Page=11&#p" target="_blank" rel="noopener noreferrer" class="btn-action px-3.5 py-2 bg-primary text-white rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-sm hover:opacity-90">
+                <span>📅</span> 彰基門診線上掛號
+              </a>
+              <a href="${central.officialUrl}" target="_blank" rel="noopener noreferrer" class="btn-action px-3.5 py-2 bg-surface border border-line text-ink rounded-xl text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-sm hover:border-primary">
+                <span>🌐</span> 專科首頁
+              </a>
+            </div>
+          </div>
+
+          <!-- Doctor Filter and Search Bar -->
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-surface p-2.5 rounded-xl border border-line">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-bold text-muted whitespace-nowrap">專長快選：</span>
+              <button class="doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-primary text-white" data-filter="all">全部 (${doctors.length})</button>
+              <button class="doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-surface-alt text-ink border border-line" data-filter="糖尿病">糖尿病</button>
+              <button class="doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-surface-alt text-ink border border-line" data-filter="甲狀腺">甲狀腺</button>
+              <button class="doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-surface-alt text-ink border border-line" data-filter="骨質疏鬆">骨質疏鬆</button>
+              <button class="doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-surface-alt text-ink border border-line" data-filter="代謝">高血脂/代謝</button>
+            </div>
+            <input type="text" id="doc-search-input" placeholder="搜尋醫師姓名或專長..." class="w-full sm:w-48 px-3 py-1.5 rounded-lg border border-line bg-surface-alt text-xs text-ink focus:outline-none focus:border-primary" />
+          </div>
+
+          <!-- Doctor Cards Grid (All 18 Doctors) -->
+          <div id="doctor-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            ${this.renderDoctorCards(doctors)}
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-central')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+
+    // Doctor Search & Filter Handlers
+    const gridEl = modal.querySelector('#doctor-cards-grid');
+    const searchInput = modal.querySelector('#doc-search-input');
+    const filterBtns = modal.querySelectorAll('.doc-filter-btn');
+
+    let currentFilter = 'all';
+    let currentQuery = '';
+
+    const updateFilter = () => {
+      let filtered = doctors;
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(doc => 
+          doc.name.includes(currentFilter) ||
+          doc.specialties.some(s => s.includes(currentFilter))
+        );
+      }
+      if (currentQuery) {
+        filtered = filtered.filter(doc =>
+          doc.name.toLowerCase().includes(currentQuery) ||
+          doc.title.toLowerCase().includes(currentQuery) ||
+          doc.specialties.some(s => s.toLowerCase().includes(currentQuery))
+        );
+      }
+      gridEl.innerHTML = this.renderDoctorCards(filtered);
+    };
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        filterBtns.forEach(b => {
+          b.className = 'doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-surface-alt text-ink border border-line';
+        });
+        e.currentTarget.className = 'doc-filter-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-primary text-white';
+        currentFilter = e.currentTarget.getAttribute('data-filter');
+        updateFilter();
       });
     });
 
-    const body = document.getElementById('central-library-body');
-    if (body) {
-      body.innerHTML = `
-        <div class="mb-4">
-          <div class="flex items-center gap-3 mb-2">
-            <span class="text-3xl">🏛️</span>
+    searchInput?.addEventListener('input', (e) => {
+      currentQuery = e.target.value.trim().toLowerCase();
+      updateFilter();
+    });
+  }
+
+  renderDoctorCards(doctors) {
+    if (!doctors || doctors.length === 0) {
+      return `<div class="col-span-2 text-center py-8 text-xs text-muted">查無相符的專科醫師</div>`;
+    }
+
+    return doctors.map(doc => `
+      <div class="card p-3.5 rounded-xl border border-line bg-surface hover:border-primary transition flex flex-col justify-between">
+        <div>
+          <div class="flex items-start justify-between gap-2 mb-1.5">
             <div>
-              <h2 class="text-2xl font-bold text-primary-heading">彰基糖友島 · 中央圖書館</h2>
-              <p class="text-sm text-muted">全島文獻總目錄、實證數據中心與引用清單匯出</p>
+              <div class="flex items-center gap-1.5">
+                <span class="text-base font-bold text-ink">${doc.name}</span>
+                ${doc.name.includes('兼任') ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200">兼任</span>' : '<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">主治醫師</span>'}
+              </div>
+              <p class="text-[11px] text-primary font-medium mt-0.5">${doc.title}</p>
             </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
-          ${this.content.centerIsland.keyStats.map((st) => `
-            <div class="stat-card p-3 rounded-xl bg-surface-alt border border-line text-center">
-              <div class="text-xs text-muted mb-0.5">${st.label}</div>
-              <div class="text-lg font-black text-primary">${st.value}</div>
-              <div class="text-[11px] text-muted">${st.note}</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <h3 class="font-bold text-base text-ink flex items-center gap-1.5">
-            <span>📚 全站文獻總目錄</span>
-            <span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">${allLits.length} 篇實證論文</span>
-          </h3>
-          <div class="flex gap-2">
-            <button id="btn-export-all-apa" class="btn-action text-xs px-3 py-1.5 rounded-lg bg-primary text-white font-bold hover:opacity-90">
-              📋 複製全部 APA 引用
-            </button>
-            <a href="${this.content.centerIsland.materialDownload.path}" target="_blank" download class="btn-action text-xs px-3 py-1.5 rounded-lg border border-primary text-primary font-bold hover:bg-primary/10 flex items-center gap-1">
-              📥 下載年鑑 PDF (4.4MB)
+            <a href="${doc.appointmentUrl || 'https://www1.cch.org.tw/opd/service-e.aspx?id=0107&Page=11&#p'}" target="_blank" rel="noopener noreferrer" class="btn-action px-2.5 py-1 bg-primary text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm hover:opacity-90 inline-flex items-center gap-1">
+              <span>📅</span> 線上掛號
             </a>
           </div>
-        </div>
 
-        <div class="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
-          ${allLits.map((lit) => `
-            <div class="p-3.5 rounded-xl border border-line bg-surface hover:border-primary/50 transition">
-              <div class="flex items-center justify-between gap-2 mb-1">
-                <div class="flex items-center gap-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${lit.roofColor};"></span>
-                  <span class="text-xs font-bold text-primary">${lit.islandName}</span>
-                  <span class="text-xs text-muted">· ${lit.type} (${lit.year})</span>
-                </div>
-                <button class="btn-copy-apa-single text-xs text-muted hover:text-primary" data-apa="${encodeURIComponent(lit.apa)}">
-                  📋 複製 APA
-                </button>
-              </div>
-              <h4 class="font-bold text-sm text-ink mb-1">${lit.title}</h4>
-              <p class="text-xs text-muted mb-1.5">作者：${lit.authors.join('、')} ｜ 出處：${lit.journal}</p>
-              <p class="text-xs text-ink/80 bg-surface-alt p-2 rounded-lg leading-relaxed">${lit.summary}</p>
-            </div>
-          `).join('')}
-        </div>
-      `;
-
-      // Copy all APA
-      const exportBtn = document.getElementById('btn-export-all-apa');
-      if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-          const fullApa = allLits.map((l, idx) => `[${idx + 1}] ${l.apa}`).join('\n\n');
-          navigator.clipboard.writeText(fullApa);
-          this.showToast('已複製全島所有文獻之 APA 第 7 版引用清單！');
-        });
-      }
-
-      // Copy single APA
-      body.querySelectorAll('.btn-copy-apa-single').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const apaText = decodeURIComponent(btn.dataset.apa);
-          navigator.clipboard.writeText(apaText);
-          this.showToast('已複製該文獻 APA 第 7 版引用格式！');
-        });
-      });
-    }
-
-    this.openModal(modal);
-  }
-
-  // --- Individual Literature Building Detail Modal ---
-  openBuildingDetail(spec) {
-    if (!spec || !spec.id) return;
-    this.closeDrawer();
-
-    // Mark as read
-    if (!this.state.readLiterature.includes(spec.id)) {
-      this.state.readLiterature.push(spec.id);
-      this.saveState();
-    }
-
-    // Find full lit record
-    let lit = null;
-    let islandName = '';
-    for (const isl of this.content.islands) {
-      const match = isl.literature.find((l) => l.id === spec.id);
-      if (match) {
-        lit = match;
-        islandName = isl.name;
-        break;
-      }
-    }
-    if (!lit) return;
-
-    if (lit.tags && lit.tags.includes('疫苗')) {
-      this.unlockCard('card-04');
-    }
-
-    const modal = document.getElementById('literature-modal');
-    const modalBody = document.getElementById('literature-modal-body');
-    if (!modal || !modalBody) return;
-
-    modalBody.innerHTML = `
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div class="flex items-center gap-2">
-          <span class="w-4 h-4 rounded-full" style="background-color: ${lit.roofColor};"></span>
-          <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">${islandName}</span>
-          <span class="text-xs text-muted font-medium">${lit.type}</span>
-        </div>
-        <span class="badge-status text-xs bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold">
-          ✓ 同行評審驗證
-        </span>
-      </div>
-
-      <h3 class="text-xl font-bold text-ink mb-2 leading-snug">${lit.title}</h3>
-
-      <div class="text-xs text-muted space-y-1 mb-4 p-3 rounded-xl bg-surface-alt border border-line">
-        <p><strong>作者：</strong>${lit.authors.join('、')}</p>
-        <p><strong>收錄期刊：</strong>${lit.journal} (${lit.year})</p>
-        <p><strong>數位物件識別碼 (DOI)：</strong><span class="font-mono text-primary">${lit.doi}</span></p>
-      </div>
-
-      <div class="mb-4">
-        <h4 class="font-bold text-sm text-ink mb-1.5 flex items-center gap-1.5">
-          <span>📝 論文重點筆記</span>
-          <span class="text-[11px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">實證摘要整理</span>
-        </h4>
-        <p class="text-sm text-ink leading-relaxed bg-surface p-3 rounded-xl border border-line">
-          ${lit.summary}
-        </p>
-      </div>
-
-      <div class="mb-5">
-        <div class="flex items-center justify-between mb-1.5">
-          <h4 class="font-bold text-xs text-muted uppercase tracking-wider">APA 第 7 版引用格式</h4>
-          <button id="btn-copy-apa-modal" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
-            <span>📋</span> 一鍵複製引用
-          </button>
-        </div>
-        <div class="p-3 bg-surface-alt rounded-xl border border-line text-xs font-mono text-ink leading-relaxed break-all select-all">
-          ${lit.apa}
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-line">
-        <a href="https://doi.org/${lit.doi}" target="_blank" rel="noopener noreferrer" class="btn-action text-xs px-4 py-2 rounded-xl bg-primary text-white font-bold hover:opacity-90 flex items-center gap-1.5">
-          <span>🔗</span> 開啟 DOI 原文連結 (新分頁)
-        </a>
-        <button id="btn-modal-close" class="btn-action text-xs px-4 py-2 rounded-xl border border-line text-muted font-bold hover:bg-surface-alt">
-          關閉
-        </button>
-      </div>
-    `;
-
-    const copyBtn = document.getElementById('btn-copy-apa-modal');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(lit.apa);
-        this.showToast('已複製 APA 第 7 版引用格式！');
-      });
-    }
-
-    const closeBtn = document.getElementById('btn-modal-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.closeModal());
-    }
-
-    this.openModal(modal);
-  }
-
-  // --- Island Quiz Engine ---
-  renderIslandQuiz(island) {
-    const container = document.getElementById(`quiz-container-${island.id}`);
-    if (!container) return;
-
-    let userAnswers = {};
-
-    const render = () => {
-      container.innerHTML = `
-        <div class="space-y-4">
-          ${island.quiz.map((item, qIdx) => `
-            <div class="quiz-item p-3.5 rounded-xl border border-line bg-surface">
-              <div class="font-bold text-sm text-ink mb-2">Q${qIdx + 1}. ${item.q}</div>
-              <div class="space-y-1.5">
-                ${item.options.map((opt, oIdx) => `
-                  <label class="quiz-option flex items-center gap-2.5 p-2 rounded-lg border border-line/60 cursor-pointer text-xs text-ink hover:bg-surface-alt transition ${userAnswers[qIdx] === oIdx ? 'bg-primary/10 border-primary font-bold' : ''}">
-                    <input type="radio" name="quiz-${island.id}-${qIdx}" value="${oIdx}" ${userAnswers[qIdx] === oIdx ? 'checked' : ''} class="hidden">
-                    <span class="opt-indicator w-4 h-4 rounded-full border border-primary/50 flex items-center justify-center text-[10px]">
-                      ${userAnswers[qIdx] === oIdx ? '●' : String.fromCharCode(65 + oIdx)}
-                    </span>
-                    <span>${opt}</span>
-                  </label>
-                `).join('')}
-              </div>
-            </div>
-          `).join('')}
-
-          <button id="btn-submit-quiz-${island.id}" class="w-full py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-sm hover:opacity-95 transition">
-            送出測驗並查看解答
-          </button>
-        </div>
-      `;
-
-      // Radio change handlers
-      island.quiz.forEach((_, qIdx) => {
-        container.querySelectorAll(`input[name="quiz-${island.id}-${qIdx}"]`).forEach((radio) => {
-          radio.addEventListener('change', (e) => {
-            userAnswers[qIdx] = parseInt(e.target.value);
-            render();
-          });
-        });
-      });
-
-      // Submit
-      const submitBtn = document.getElementById(`btn-submit-quiz-${island.id}`);
-      if (submitBtn) {
-        submitBtn.addEventListener('click', () => {
-          let score = 0;
-          island.quiz.forEach((q, idx) => {
-            if (userAnswers[idx] === q.ans) score++;
-          });
-
-          this.state.quizScores[island.id] = score;
-          this.saveState();
-
-          // Celebration
-          confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
-
-          // Check if all quizzes passed
-          const totalScore = Object.values(this.state.quizScores).reduce((a, b) => a + b, 0);
-          if (totalScore >= 6) {
-            this.unlockCard('card-05');
-          }
-
-          container.innerHTML = `
-            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center mb-4">
-              <div class="text-3xl mb-1">🎉</div>
-              <h4 class="font-black text-lg text-emerald-800">測驗完成！</h4>
-              <p class="text-xs text-emerald-700 mt-1">
-                您的成績：<strong>${score} / ${island.quiz.length} 題正確</strong>
-              </p>
-            </div>
-            <div class="space-y-3">
-              ${island.quiz.map((q, idx) => `
-                <div class="p-3 rounded-xl border border-line bg-surface text-xs">
-                  <div class="font-bold text-ink mb-1">Q${idx + 1}. ${q.q}</div>
-                  <div class="text-xs ${userAnswers[idx] === q.ans ? 'text-emerald-700 font-bold' : 'text-red-600'}">
-                    您的回答：${q.options[userAnswers[idx]] || '未作答'} (${userAnswers[idx] === q.ans ? '✓ 正確' : '✗ 錯誤'})
-                  </div>
-                  <div class="text-xs text-primary font-bold mt-0.5">正確答案：${q.options[q.ans]}</div>
-                  <div class="text-[11px] text-muted mt-1 bg-surface-alt p-2 rounded">
-                    <strong>解析：</strong>${q.explanation}
-                  </div>
-                </div>
+          <div class="mt-2 pt-2 border-t border-line/60">
+            <span class="text-[10px] font-bold text-muted block mb-1">主治疾患與專長：</span>
+            <div class="flex flex-wrap gap-1">
+              ${doc.specialties.map(spec => `
+                <span class="text-[11px] px-2 py-0.5 rounded-md bg-surface-alt text-ink border border-line/50">
+                  ${spec}
+                </span>
               `).join('')}
             </div>
-          `;
-        });
-      }
-    };
-
-    render();
-  }
-
-  // --- Collection Cards & Badges ---
-  unlockCard(cardId) {
-    if (!this.state.unlockedCards.includes(cardId)) {
-      this.state.unlockedCards.push(cardId);
-      this.saveState();
-      const card = this.content.collectionCards.find((c) => c.id === cardId);
-      if (card) {
-        this.showToast(`🏆 解鎖新成就卡片：【${card.title}】！`);
-        confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
-      }
-    }
-  }
-
-  openCollectionModal() {
-    const modal = document.getElementById('collection-modal');
-    const body = document.getElementById('collection-modal-body');
-    if (!modal || !body) return;
-
-    body.innerHTML = `
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h3 class="text-xl font-bold text-primary-heading">🏆 糖友島榮譽圖鑑</h3>
-          <p class="text-xs text-muted">收集全島 6 面實證徽章，解鎖健康榮譽證書</p>
+          </div>
         </div>
-        <div class="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-full">
-          已收集 ${this.state.unlockedCards.length} / ${this.content.collectionCards.length}
+
+        <div class="mt-3 pt-2 border-t border-line/40 flex items-center justify-between text-[11px]">
+          <span class="text-muted">彰化基督教醫院 門診部</span>
+          <a href="${doc.officialUrl}" target="_blank" rel="noopener noreferrer" class="text-primary font-bold hover:underline inline-flex items-center gap-0.5">
+            醫師詳細簡介 →
+          </a>
         </div>
       </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        ${this.content.collectionCards.map((card) => {
-          const unlocked = this.state.unlockedCards.includes(card.id);
-          return `
-            <div class="card p-3 rounded-xl border text-center transition ${unlocked ? 'bg-surface border-primary/40 shadow-sm' : 'bg-gray-50 border-gray-200 opacity-60'}">
-              <div class="text-3xl mb-1.5">${unlocked ? card.icon : '🔒'}</div>
-              <h4 class="font-bold text-xs text-ink mb-1">${card.title}</h4>
-              <p class="text-[11px] text-muted leading-tight">${card.desc}</p>
-              <div class="mt-2 text-[10px] font-bold ${unlocked ? 'text-primary' : 'text-gray-400'}">
-                ${unlocked ? '✓ 已解鎖' : '未達成'}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-
-    this.openModal(modal);
+    `).join('');
   }
 
-  // --- Certificate Generator (Canvas Download) ---
-  openCertificateModal() {
-    const totalIslands = this.content.islands.length;
-    const visited = this.state.visitedIslands.length;
-    const totalQuiz = Object.values(this.state.quizScores).reduce((a, b) => a + b, 0);
-
-    const modal = document.getElementById('certificate-modal');
-    const body = document.getElementById('certificate-modal-body');
-    if (!modal || !body) return;
-
-    body.innerHTML = `
-      <div class="text-center mb-4">
-        <h3 class="text-xl font-bold text-primary-heading">📜 彰基糖友島榮譽結業證書</h3>
-        <p class="text-xs text-muted">表彰您對糖尿病流行病學、器官保護指引與全方位照護之探索成就</p>
-      </div>
-
-      <div class="p-3 bg-surface-alt rounded-xl border border-line mb-4 text-xs space-y-1">
-        <div class="flex justify-between"><span>已探索主題島嶼：</span><strong>${visited} / ${totalIslands}</strong></div>
-        <div class="flex justify-between"><span>已研讀實證文獻：</span><strong>${this.state.readLiterature.length} / 8 篇</strong></div>
-        <div class="flex justify-between"><span>測驗累計正確題數：</span><strong>${totalQuiz} / 6 題</strong></div>
-      </div>
-
-      <div class="mb-4">
-        <label class="block text-xs font-bold text-ink mb-1">請輸入證書上的尊姓大名 / 暱稱：</label>
-        <input type="text" id="cert-user-name" placeholder="例如：張健康 先生/女士" value="糖友健康勇者" class="w-full px-3 py-2 text-sm rounded-lg border border-line bg-surface text-ink focus:outline-none focus:border-primary">
-      </div>
-
-      <div class="canvas-preview-box mb-4 overflow-hidden rounded-xl border border-line bg-surface flex justify-center p-2">
-        <canvas id="cert-canvas" width="600" height="420" class="w-full max-w-[500px] rounded shadow-sm"></canvas>
-      </div>
-
-      <div class="flex items-center justify-end gap-2">
-        <button id="btn-download-cert" class="btn-action text-xs px-4 py-2 rounded-xl bg-primary text-white font-bold hover:opacity-90 flex items-center gap-1.5">
-          <span>💾</span> 下載證書圖片 (PNG)
-        </button>
-      </div>
-    `;
-
-    const canvas = document.getElementById('cert-canvas');
-    const nameInput = document.getElementById('cert-user-name');
-
-    const drawCert = () => {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-
-      // Background gradient
-      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-      bgGrad.addColorStop(0, '#f8fdfa');
-      bgGrad.addColorStop(1, '#e7f5f0');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Ornate Border
-      ctx.strokeStyle = '#2a8a74';
-      ctx.lineWidth = 8;
-      ctx.strokeRect(12, 12, w - 24, h - 24);
-
-      ctx.strokeStyle = '#e46a5e';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(20, 20, w - 40, h - 40);
-
-      // Title
-      ctx.fillStyle = '#2a8a74';
-      ctx.font = 'bold 26px "Huninn", "Noto Sans TC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('彰基糖友島 · 健康守護榮譽證書', w / 2, 65);
-
-      ctx.fillStyle = '#64748b';
-      ctx.font = '13px "Noto Sans TC", sans-serif';
-      ctx.fillText('CERTIFICATE OF DIABETES KNOWLEDGE EXPLORATION', w / 2, 88);
-
-      // Divider line
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(80, 105);
-      ctx.lineTo(w - 80, 105);
-      ctx.stroke();
-
-      // Recipient
-      ctx.fillStyle = '#1e3a34';
-      ctx.font = 'bold 22px "Huninn", "Noto Sans TC", sans-serif';
-      const name = (nameInput && nameInput.value) || '糖友健康勇者';
-      ctx.fillText(name, w / 2, 150);
-
-      // Body text
-      ctx.fillStyle = '#334155';
-      ctx.font = '14px "Noto Sans TC", sans-serif';
-      ctx.fillText('恭喜您已完整造訪彰基糖友島 3D 群島，深入研讀臺灣糖尿病流行病學實證、', w / 2, 195);
-      ctx.fillText('掌握器官保護新藥與併發症預防關鍵，並展現卓越的自我健康管理決心！', w / 2, 222);
-
-      // Stats badge
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(80, 250, w - 160, 48);
-      ctx.strokeStyle = '#2a8a74';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(80, 250, w - 160, 48);
-
-      ctx.fillStyle = '#2a8a74';
-      ctx.font = 'bold 13px "Noto Sans TC", sans-serif';
-      ctx.fillText(`已訪島嶼：${visited}/${totalIslands}   |   實證文獻：${this.state.readLiterature.length}/8 篇   |   測驗積分：${totalQuiz}/6`, w / 2, 280);
-
-      // Signatures & Stamp
-      ctx.fillStyle = '#475569';
-      ctx.font = '12px "Noto Sans TC", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('發行單位：彰化基督教醫院 糖尿病照護團隊', 40, 360);
-      ctx.fillText(`發行日期：${new Date().toLocaleDateString('zh-TW')}`, 40, 380);
-
-      // Red seal stamp
-      ctx.save();
-      ctx.translate(w - 110, 350);
-      ctx.rotate(-0.15);
-      ctx.strokeStyle = '#e46a5e';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-40, -25, 80, 50);
-      ctx.fillStyle = '#e46a5e';
-      ctx.font = 'bold 13px "Huninn", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('彰基糖友島', 0, -4);
-      ctx.fillText('數位印鑑', 0, 16);
-      ctx.restore();
-    };
-
-    drawCert();
-    if (nameInput) {
-      nameInput.addEventListener('input', drawCert);
+  // --- Quiz Generator ---
+  renderQuizHTML(island) {
+    if (!island.quiz || island.quiz.length === 0) {
+      return `<p class="text-xs text-muted p-4 text-center">本島嶼小測驗籌備中</p>`;
     }
 
-    const dlBtn = document.getElementById('btn-download-cert');
-    if (dlBtn && canvas) {
-      dlBtn.addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.download = `彰基糖友島_榮譽證書_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        this.showToast('榮譽結業證書已成功下載！');
+    return `
+      <div class="bg-blue-50/70 p-3 rounded-xl border border-blue-100 text-xs text-blue-950 mb-3">
+        <strong>🎯 實證衛教測驗：</strong>測試您對${island.name}的理解，答對可累積健康積分！
+      </div>
+
+      ${island.quiz.map((q, qIdx) => `
+        <div class="quiz-box card p-4 rounded-xl border border-line bg-surface mb-3" data-q-idx="${qIdx}">
+          <p class="font-bold text-sm text-ink mb-3">${qIdx + 1}. ${q.q}</p>
+          <div class="space-y-2">
+            ${q.options.map((opt, optIdx) => `
+              <label class="quiz-option">
+                <input type="radio" name="quiz-${island.id}-${qIdx}" value="${optIdx}" class="hidden" />
+                <span class="opt-indicator">${['A', 'B', 'C', 'D'][optIdx]}</span>
+                <span class="opt-text text-xs leading-relaxed text-ink">${opt}</span>
+              </label>
+            `).join('')}
+          </div>
+          <div class="quiz-result hidden mt-3 p-3 rounded-xl text-xs border"></div>
+        </div>
+      `).join('')}
+
+      <button id="btn-submit-quiz" class="btn-action w-full py-2.5 bg-primary text-white rounded-xl font-bold text-xs shadow-sm hover:opacity-90">
+        送出測驗答案並查看解析
+      </button>
+    `;
+  }
+
+  bindQuizEvents(container, island) {
+    const submitBtn = container.querySelector('#btn-submit-quiz');
+    if (!submitBtn) return;
+
+    submitBtn.addEventListener('click', () => {
+      let correctCount = 0;
+      island.quiz.forEach((q, qIdx) => {
+        const box = container.querySelector(`.quiz-box[data-q-idx="${qIdx}"]`);
+        const checked = box.querySelector(`input[name="quiz-${island.id}-${qIdx}"]:checked`);
+        const resultEl = box.querySelector('.quiz-result');
+
+        if (!checked) {
+          resultEl.className = 'quiz-result mt-3 p-3 rounded-xl text-xs border bg-amber-50 text-amber-900 border-amber-200';
+          resultEl.innerHTML = '⚠️ 請先選擇此題答案！';
+          resultEl.classList.remove('hidden');
+          return;
+        }
+
+        const selected = parseInt(checked.value, 10);
+        if (selected === q.correct) {
+          correctCount++;
+          resultEl.className = 'quiz-result mt-3 p-3 rounded-xl text-xs border bg-emerald-50 text-emerald-950 border-emerald-200';
+          resultEl.innerHTML = `✅ <strong>回答正確！</strong><br>${q.explanation}`;
+        } else {
+          resultEl.className = 'quiz-result mt-3 p-3 rounded-xl text-xs border bg-rose-50 text-rose-950 border-rose-200';
+          resultEl.innerHTML = `❌ <strong>回答錯誤</strong>（正確解答：${['A', 'B', 'C', 'D'][q.correct]}）<br>${q.explanation}`;
+        }
+        resultEl.classList.remove('hidden');
       });
-    }
 
-    this.openModal(modal);
+      this.state.quizScores[island.id] = correctCount;
+      this.saveState();
+      this.updateProgressUI();
+
+      if (correctCount === island.quiz.length) {
+        this.triggerConfetti();
+        this.showToast(`🎉 恭喜！${island.name}測驗獲得滿分！`);
+      } else {
+        this.showToast(`測驗完成！您答對了 ${correctCount} / ${island.quiz.length} 題`);
+      }
+    });
   }
 
-  // --- Daily Key & Treasure Chest ---
+  // --- Feature Modal: Seven Islands Text List (無障礙與純文字模式) ---
+  openTextListModal() {
+    let modal = document.getElementById('modal-list');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-list';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
+
+    const islands = this.content?.islands || [];
+    const central = this.content?.central;
+
+    modal.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🗺️</span>
+            <div>
+              <h3 class="modal-title font-bold text-base">七大重點衛教島嶼 清單</h3>
+              <p class="text-xs text-muted">彰基常見健康與疾病迷思解答手冊 · 快速導覽</p>
+            </div>
+          </div>
+          <button class="btn-modal-close" id="btn-close-list">✕</button>
+        </div>
+
+        <div class="modal-body space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+          <!-- Central Hub -->
+          <div class="card p-3 rounded-xl border-2 border-primary/40 bg-primary/5 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-primary text-white">醫療總部</span>
+              <h4 class="font-bold text-sm text-ink mt-1">🏛️ ${central?.name}</h4>
+              <p class="text-xs text-muted">全體 18 位內分泌暨新陳代謝科主治醫師總覽</p>
+            </div>
+            <button class="btn-action px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold btn-open-island-from-list" data-id="island-center">
+              查看全體醫師
+            </button>
+          </div>
+
+          <!-- 7 Outer Islands -->
+          ${islands.map(isl => `
+            <div class="card p-3 rounded-xl border border-line bg-surface flex items-center justify-between hover:border-primary transition">
+              <div>
+                <div class="flex items-center gap-1.5 mb-0.5">
+                  <span class="text-xs font-bold text-muted">#0${isl.order}</span>
+                  <span class="text-xs font-bold px-1.5 py-0.2 rounded bg-surface-alt text-primary">${isl.group}</span>
+                </div>
+                <h4 class="font-bold text-sm text-ink">${isl.icon} ${isl.name}</h4>
+                <p class="text-[11px] text-muted">${isl.myths.length} 項迷思全破解 · ${isl.landmark}</p>
+              </div>
+              <button class="btn-action px-3 py-1.5 bg-surface-alt border border-line text-ink rounded-lg text-xs font-bold hover:bg-primary hover:text-white btn-open-island-from-list" data-id="${isl.id}">
+                前往島嶼
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-list')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+
+    modal.querySelectorAll('.btn-open-island-from-list').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.getAttribute('data-id');
+        modal.classList.remove('open');
+        if (this.scene) {
+          this.scene.focusIsland(id);
+        }
+        this.openIslandDrawer(id);
+      });
+    });
+  }
+
+  // --- Feature Modal: Guide (糖糖小嚮導) ---
+  openGuideModal() {
+    let modal = document.getElementById('modal-guide');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-guide';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">👩‍⚕️</span>
+            <div>
+              <h3 class="modal-title font-bold text-base">糖糖衛教師 · 健康智能小嚮導</h3>
+              <p class="text-xs text-muted">彰基內分泌七大迷思即時解答庫</p>
+            </div>
+          </div>
+          <button class="btn-modal-close" id="btn-close-guide">✕</button>
+        </div>
+
+        <div class="modal-body space-y-4">
+          <div class="flex items-start gap-3 p-3 bg-surface-alt rounded-xl border border-line text-xs">
+            <span class="text-2xl">💡</span>
+            <div>
+              <strong>您好！我是彰基糖糖衛教師~</strong><br>
+              請輸入您想了解的健康疑問（如：吃甜食、減重宵夜、大骨湯補鈣、深蹲防肌少、腰圍標準、洗牙、甲狀腺大脖子、杜思德醫師）：
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <input type="text" id="guide-search-input" placeholder="輸入關鍵字，例如：吃甜、大骨湯、腰圍、重訓..." class="flex-1 px-3 py-2 rounded-xl border border-line bg-surface text-xs text-ink focus:outline-none focus:border-primary" />
+            <button id="btn-guide-search" class="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold">查詢</button>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 text-xs">
+            <span class="text-muted text-[11px] self-center">快速問答：</span>
+            <button class="quick-pill" data-q="吃太甜才會得糖尿病">吃甜食得糖尿病?</button>
+            <button class="quick-pill" data-q="宵夜">減重能吃宵夜?</button>
+            <button class="quick-pill" data-q="大骨湯">大骨湯能補鈣?</button>
+            <button class="quick-pill" data-q="散步預防肌少">散步能防肌少?</button>
+            <button class="quick-pill" data-q="腰圍">代謝症候群腰圍?</button>
+            <button class="quick-pill" data-q="牙周">糖尿病與牙周病?</button>
+            <button class="quick-pill" data-q="大脖子">大脖子是甲亢?</button>
+            <button class="quick-pill" data-q="杜思德">杜思德醫師簡介</button>
+          </div>
+
+          <div id="guide-answer-box" class="p-4 bg-surface rounded-xl border border-line min-h-[140px] max-h-[220px] overflow-y-auto text-xs leading-relaxed">
+            請輸入上方關鍵字或點擊快捷標籤，我會為您調閱彰基衛教手冊的精準解答！
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-guide')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+
+    const input = modal.querySelector('#guide-search-input');
+    const answerBox = modal.querySelector('#guide-answer-box');
+
+    const handleSearch = (query) => {
+      if (!query.trim()) return;
+      const q = query.toLowerCase();
+
+      if (q.includes('杜思德') || q.includes('門診') || q.includes('掛號') || q.includes('醫生') || q.includes('醫師')) {
+        answerBox.innerHTML = `
+          <div class="text-primary font-bold mb-1">🏛️ 彰基內分泌醫療中心 · 杜思德 主治醫師</div>
+          <p class="mb-2">杜思德醫師為前中華民國糖尿病衛教學會理事長，專精糖尿病、肥胖減重、骨質疏鬆、肌少症及甲狀腺疾患。</p>
+          <button class="px-3 py-1 bg-primary text-white rounded-lg text-xs font-bold" id="btn-goto-center-hub">查看完整資歷與門診掛號</button>
+        `;
+        answerBox.querySelector('#btn-goto-center-hub')?.addEventListener('click', () => {
+          modal.classList.remove('open');
+          this.openCenterIslandModal();
+        });
+        return;
+      }
+
+      // Search across all myths
+      let matched = [];
+      this.content?.islands.forEach((isl) => {
+        isl.myths.forEach((m) => {
+          if (m.myth.toLowerCase().includes(q) || m.truth.toLowerCase().includes(q)) {
+            matched.push({ island: isl, item: m });
+          }
+        });
+      });
+
+      if (matched.length > 0) {
+        answerBox.innerHTML = matched.map((match) => `
+          <div class="mb-3 pb-2 border-b border-line last:border-none">
+            <div class="font-bold text-primary mb-0.5">${match.island.icon} 【${match.island.name}】</div>
+            <div class="font-bold text-ink mb-1">❌ 迷思：${match.item.myth}</div>
+            <div class="bg-emerald-50 p-2 rounded-lg text-emerald-950 text-[11px] mb-1">✅ <strong>真相：</strong>${match.item.truth}</div>
+            <div class="text-[11px] text-muted">🎯 <strong>建議：</strong>${match.item.action}</div>
+          </div>
+        `).join('');
+      } else {
+        answerBox.innerHTML = `
+          <div class="text-muted text-center py-4">
+            抱歉，未找到與「${query}」完全吻合的迷思。您可以嘗試搜尋「吃甜、洗腎、大骨湯、散步、腰圍、刷牙、海帶、甲狀腺」等關鍵字，或點選下方「七大島嶼清單」直接閱讀！
+          </div>
+        `;
+      }
+    };
+
+    modal.querySelector('#btn-guide-search')?.addEventListener('click', () => handleSearch(input.value));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSearch(input.value);
+    });
+
+    modal.querySelectorAll('.quick-pill').forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        const kw = e.currentTarget.getAttribute('data-q');
+        input.value = kw;
+        handleSearch(kw);
+      });
+    });
+  }
+
+  // --- Feature Modal: Daily Key & Health Chest ---
   checkDailyKeys() {
     const today = new Date().toDateString();
     if (this.state.lastKeyDate !== today) {
       this.state.dailyKeys = 3;
       this.state.lastKeyDate = today;
-      this.state.chestOpenedToday = 0;
       this.saveState();
     }
   }
 
-  openChestModal() {
+  openDailyChestModal() {
     this.checkDailyKeys();
-    const modal = document.getElementById('chest-modal');
-    const body = document.getElementById('chest-modal-body');
-    if (!modal || !body) return;
 
-    body.innerHTML = `
-      <div class="text-center mb-4">
-        <div class="text-4xl mb-2">🎁</div>
-        <h3 class="text-xl font-bold text-primary-heading">海島每日健康寶箱</h3>
-        <p class="text-xs text-muted">今日剩餘鑰匙：<strong class="text-primary text-base">${this.state.dailyKeys}</strong> 把</p>
-      </div>
+    let modal = document.getElementById('modal-chest');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-chest';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
 
-      <div id="chest-interactive-box" class="p-6 rounded-2xl bg-surface-alt border border-line text-center">
-        ${this.state.dailyKeys > 0 ? `
-          <div class="text-5xl cursor-pointer hover:scale-110 transition mb-3" id="chest-target">
-            📦
+    const tips = [
+      "💡 彰基醫師叮嚀：低血糖（<70 mg/dL）應遵循 15-15 原則補充方糖或純果汁，切忌食用高脂巧克力！",
+      "💡 彰基醫師叮嚀：極端節食去澱粉只會減掉水分與肌肉，選擇全穀雜糧與維持肌肉才是長久之計！",
+      "💡 彰基醫師叮嚀：身高比年輕時矮 4 公分以上，是無痛脊椎壓迫骨折警訊，請儘速檢查骨質密度！",
+      "💡 彰基醫師叮嚀：散步主要強化心肺，預防肌少症務必加入彈力帶或深蹲等阻力運動！",
+      "💡 彰基醫師叮嚀：男性腰圍 ≥ 90 cm、女性 ≥ 80 cm是內臟脂肪警訊，減重 5~10% 各項指標可全面逆轉！",
+      "💡 彰基醫師叮嚀：糖尿病與牙周病具有雙向發炎影響，每晚務必確實使用牙線清潔牙縫死角！",
+      "💡 彰基醫師叮嚀：臨床逾 90% 甲狀腺結節為良性，定期追蹤超音波即可，毋須恐慌盲目禁碘！"
+    ];
+
+    modal.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🎁</span>
+            <h3 class="modal-title font-bold text-base">每日健康鑰匙寶箱</h3>
           </div>
-          <button id="btn-open-chest" class="btn-action text-xs px-5 py-2.5 rounded-xl bg-accent text-white font-bold hover:opacity-90 shadow-sm">
-            🔑 使用 1 把鑰匙開啟寶箱
+          <button class="btn-modal-close" id="btn-close-chest">✕</button>
+        </div>
+
+        <div class="modal-body text-center space-y-4">
+          <div class="text-4xl py-2">🗝️</div>
+          <p class="text-xs text-muted">今日尚有 <strong class="text-primary text-sm">${this.state.dailyKeys}</strong> 把鑰匙（每天自動重置 3 把）</p>
+
+          <div id="chest-reward-area" class="p-3 bg-surface-alt rounded-xl border border-line text-xs min-h-[60px] flex items-center justify-center">
+            ${this.state.dailyKeys > 0 ? '點擊下方按鈕開啟健康知識錦囊！' : '今天的鑰匙已經用完囉，明天再來開寶箱吧！'}
+          </div>
+
+          <button id="btn-open-chest" class="btn-action w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold ${this.state.dailyKeys <= 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+            開啟寶箱（消耗 1 把鑰匙）
           </button>
-        ` : `
-          <div class="text-4xl mb-2">📭</div>
-          <p class="text-sm text-muted font-bold">今天的 3 把鑰匙已用完囉！</p>
-          <p class="text-xs text-muted mt-1">明日凌晨將自動為您重置 3 把新鑰匙，敬請期待~</p>
-        `}
+        </div>
       </div>
     `;
 
-    const openBtn = document.getElementById('btn-open-chest');
-    const chestTarget = document.getElementById('chest-target');
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-chest')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
 
-    const handleOpen = () => {
+    modal.querySelector('#btn-open-chest')?.addEventListener('click', () => {
       if (this.state.dailyKeys <= 0) return;
       this.state.dailyKeys--;
-      this.state.chestOpenedToday++;
       this.saveState();
 
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-
-      const tips = [
-        '小叮嚀：第 2 型糖尿病發病年齡中位數為 60 歲，40 歲起建議每三年善用免費成人健檢！',
-        '保腎密技：SGLT-2 抑制劑與 GLP-1 RA 具備臨床驗證的心臟與腎臟實證保護力！',
-        '疫苗強心針：65 歲以上糖友按時施打公費流感與肺炎鏈球菌疫苗，降低肺炎重症與死亡率達 20% 以上！',
-        '護眼守則：每年至少完成一次散瞳眼底鏡檢查，早期發現糖尿病視網膜病變可避免視力嚴重損傷！',
-        '糖足防線：每天洗澡後擦乾腳趾縫，並仔細檢視足底有無紅腫或微小傷口！'
-      ];
       const randomTip = tips[Math.floor(Math.random() * tips.length)];
-
-      const box = document.getElementById('chest-interactive-box');
-      if (box) {
-        box.innerHTML = `
-          <div class="text-5xl mb-2">✨💎✨</div>
-          <h4 class="font-bold text-base text-primary mb-1">寶箱開啟成功！獲得健康智慧寶石</h4>
-          <p class="text-xs text-ink leading-relaxed p-3 bg-surface rounded-xl border border-line my-3">
-            ${randomTip}
-          </p>
-          <p class="text-xs text-muted mb-3">今日剩餘鑰匙：<strong>${this.state.dailyKeys}</strong> 把</p>
-          ${this.state.dailyKeys > 0 ? `
-            <button id="btn-open-again" class="btn-action text-xs px-4 py-2 rounded-xl bg-primary text-white font-bold hover:opacity-90">
-              再開一次
-            </button>
-          ` : '<span class="text-xs text-muted font-bold">今日寶箱已全數開啟完畢！</span>'}
-        `;
-
-        const againBtn = document.getElementById('btn-open-again');
-        if (againBtn) againBtn.addEventListener('click', () => this.openChestModal());
-      }
-    };
-
-    if (openBtn) openBtn.addEventListener('click', handleOpen);
-    if (chestTarget) chestTarget.addEventListener('click', handleOpen);
-
-    this.openModal(modal);
+      modal.querySelector('#chest-reward-area').innerHTML = `
+        <div class="text-primary font-bold leading-relaxed text-xs">
+          ${randomTip}
+        </div>
+      `;
+      this.triggerConfetti();
+      this.openDailyChestModal();
+    });
   }
 
-  // --- Assistant (彰基糖糖衛教師) AI Q&A Modal ---
-  openGuideModal() {
-    const modal = document.getElementById('guide-modal');
-    const body = document.getElementById('guide-modal-body');
-    if (!modal || !body) return;
+  // --- Feature Modal: Collection & Badges ---
+  unlockCard(badgeId) {
+    if (!this.state.unlockedCards.includes(badgeId)) {
+      this.state.unlockedCards.push(badgeId);
+      this.saveState();
+      this.showToast('🎖️ 解鎖全新衛教榮譽圖鑑！');
+    }
+  }
 
-    body.innerHTML = `
-      <div class="flex items-center gap-3 mb-4 p-3 bg-surface-alt rounded-2xl border border-line">
-        <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-2xl border border-primary/30">
-          👩‍⚕️
-        </div>
-        <div>
-          <h3 class="font-bold text-base text-primary-heading">${this.content.site.mascot.name}</h3>
-          <p class="text-xs text-muted">${this.content.site.mascot.description}</p>
-        </div>
-      </div>
+  openCollectionModal() {
+    let modal = document.getElementById('modal-collection');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-collection';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
 
-      <div class="mb-4">
-        <label class="block text-xs font-bold text-ink mb-1.5">請輸入您想了解的糖尿病問題（關鍵字比對）：</label>
-        <div class="flex gap-2">
-          <input type="text" id="guide-input" placeholder="例如：洗腎、疫苗、藥物、盛行率、ABC目標..." class="flex-1 px-3 py-2 text-xs rounded-xl border border-line bg-surface text-ink focus:outline-none focus:border-primary">
-          <button id="btn-ask-guide" class="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:opacity-90">
-            發問
-          </button>
-        </div>
-      </div>
+    const badges = [
+      { id: 'badge-welcome', icon: '🏛️', name: '彰基內分泌總部', desc: '造訪彰化基督教醫院內分泌暨新陳代謝科，認識全體18位專科主治醫師。' },
+      { id: 'badge-diabetes', icon: '🩸', name: '穩糖護心腎星', desc: '探索糖尿病迷思島，精通 HbA1c 與低血糖防護。' },
+      { id: 'badge-weight', icon: '⚖️', name: '健康減脂達人', desc: '探索健康減重迷思島，破解極端節食與代謝陷阱。' },
+      { id: 'badge-bone', icon: '🦴', name: '骨骼守護金盾', desc: '探索骨質疏鬆迷思島，掌握鈣質、維生素D與負重運動。' },
+      { id: 'badge-muscle', icon: '💪', name: '阻力增肌先鋒', desc: '探索肌少症迷思島，重視每餐優質蛋白與阻抗鍛鍊。' },
+      { id: 'badge-metabolic', icon: '📏', name: '黃金腰圍標竿', desc: '探索代謝症候群迷思島，堅守男90女80逆轉心血管風險。' },
+      { id: 'badge-dental', icon: '🦷', name: '齒顎共照守護', desc: '探索牙周病共病迷思島，貫徹定期潔牙阻斷全身發炎。' },
+      { id: 'badge-thyroid', icon: '🦋', name: '甲狀腺智慧眼', desc: '探索甲狀腺迷思島，正確認知良性結節與抽血超音波。' }
+    ];
 
-      <div class="mb-3">
-        <span class="text-xs text-muted font-bold">熱門常見提問：</span>
-        <div class="flex gap-1.5 flex-wrap mt-1.5" id="guide-quick-pills">
-          ${this.content.faq.map((item) => `
-            <button class="quick-pill text-[11px] px-2.5 py-1 rounded-full border border-line bg-surface text-ink hover:border-primary transition" data-q="${item.q}">
-              ${item.q}
-            </button>
-          `).join('')}
+    modal.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🏆</span>
+            <h3 class="modal-title font-bold text-base">七大衛教 榮譽圖鑑</h3>
+          </div>
+          <button class="btn-modal-close" id="btn-close-collection">✕</button>
         </div>
-      </div>
 
-      <div id="guide-response-box" class="p-3.5 rounded-xl border border-line bg-surface min-h-[110px] text-xs text-ink leading-relaxed">
-        哈囉！我是彰基糖糖衛教師，點擊上方熱門問題，或直接搜尋關鍵字，我會立即為您調出年鑑與臨床實證解說喔！
+        <div class="modal-body space-y-3">
+          <p class="text-xs text-muted">造訪各島嶼並研讀衛教迷思，解鎖所有健康徽章：</p>
+          <div class="grid grid-cols-2 gap-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            ${badges.map((b) => {
+              const unlocked = this.state.unlockedCards.includes(b.id);
+              return `
+                <div class="p-3 rounded-xl border ${unlocked ? 'border-primary/40 bg-surface' : 'border-line bg-surface-alt/60 opacity-60'} text-center">
+                  <div class="text-2xl mb-1">${unlocked ? b.icon : '🔒'}</div>
+                  <h4 class="font-bold text-xs ${unlocked ? 'text-primary' : 'text-muted'} mb-1">${b.name}</h4>
+                  <p class="text-[10px] text-muted leading-tight">${unlocked ? b.desc : '探索對應主題島嶼解鎖'}</p>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
       </div>
     `;
 
-    const input = document.getElementById('guide-input');
-    const askBtn = document.getElementById('btn-ask-guide');
-    const resBox = document.getElementById('guide-response-box');
-
-    const handleAsk = (queryText) => {
-      const q = (queryText || (input && input.value) || '').trim().toLowerCase();
-      if (!q) return;
-
-      // Match in FAQ
-      const hit = this.content.faq.find((f) => f.q.toLowerCase().includes(q) || f.a.toLowerCase().includes(q));
-      if (hit) {
-        resBox.innerHTML = `
-          <div class="font-bold text-primary mb-1">【糖糖衛教師回覆】</div>
-          <p class="mb-2.5">${hit.a}</p>
-          <div class="pt-2 border-t border-line flex items-center justify-between text-[11px]">
-            <span class="text-muted">資料出處：${hit.islandName}</span>
-            <button class="text-primary font-bold hover:underline" id="guide-nav-island" data-id="${hit.islandId}">
-              飛往 ${hit.islandName} 查看詳情 →
-            </button>
-          </div>
-        `;
-        const navBtn = document.getElementById('guide-nav-island');
-        if (navBtn) {
-          navBtn.addEventListener('click', () => {
-            this.closeModal();
-            this.openIslandDrawer(navBtn.dataset.id);
-          });
-        }
-      } else {
-        resBox.innerHTML = `
-          <div class="font-bold text-amber-700 mb-1">【糖糖衛教師提醒】</div>
-          <p>抱歉，目前資料庫未找到與「${q}」完全匹配的項目。建議嘗試輸入關鍵字：<strong>盛行率、心腎、洗腎、疫苗、P4P、血糖</strong>，或點選上方熱門常見提問查看詳細實證！</p>
-        `;
-      }
-    };
-
-    if (askBtn) askBtn.addEventListener('click', () => handleAsk());
-    if (input) {
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleAsk();
-      });
-    }
-
-    body.querySelectorAll('.quick-pill').forEach((pill) => {
-      pill.addEventListener('click', () => {
-        if (input) input.value = pill.dataset.q;
-        handleAsk(pill.dataset.q);
-      });
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-collection')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
     });
-
-    this.openModal(modal);
   }
 
-  // --- Save Code (接關碼) ---
-  openSaveCodeModal() {
-    const modal = document.getElementById('savecode-modal');
-    const body = document.getElementById('savecode-modal-body');
-    if (!modal || !body) return;
+  // --- Feature Modal: Certificate Generator (HTML5 Canvas) ---
+  openCertificateModal() {
+    let modal = document.getElementById('modal-certificate');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-certificate';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
 
-    // Encode current state to Base64
+    modal.innerHTML = `
+      <div class="modal-card modal-large">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📜</span>
+            <h3 class="modal-title font-bold text-base">結業榮譽證書頒發</h3>
+          </div>
+          <button class="btn-modal-close" id="btn-close-cert">✕</button>
+        </div>
+
+        <div class="modal-body space-y-4">
+          <div class="text-xs text-muted">
+            表彰您對彰基七大健康迷思與內分泌醫療團隊專業指引之探索成就！
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-bold text-ink whitespace-nowrap">受獎者姓名：</label>
+            <input type="text" id="cert-name-input" value="${this.state.userName}" class="flex-1 px-3 py-1.5 rounded-lg border border-line bg-surface text-xs text-ink focus:outline-none focus:border-primary" />
+            <button id="btn-update-cert" class="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold">更新證書</button>
+          </div>
+
+          <div class="canvas-wrapper flex justify-center bg-surface-alt p-2 rounded-xl border border-line overflow-hidden">
+            <canvas id="cert-canvas" width="800" height="500" class="max-w-full h-auto rounded-lg shadow-sm"></canvas>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button id="btn-download-cert" class="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90">
+              💾 下載證書圖片 (PNG)
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-cert')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+
+    const canvas = modal.querySelector('#cert-canvas');
+    const nameInput = modal.querySelector('#cert-name-input');
+
+    const drawCertificate = (name) => {
+      const ctx = canvas.getContext('2d');
+      // Background
+      ctx.fillStyle = '#fbfdfc';
+      ctx.fillRect(0, 0, 800, 500);
+
+      // Elegant Dual Borders
+      ctx.strokeStyle = '#2a8a74';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(20, 20, 760, 460);
+
+      ctx.strokeStyle = '#e27d60';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(30, 30, 740, 440);
+
+      // Header Title
+      ctx.fillStyle = '#1e3a34';
+      ctx.font = 'bold 30px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('彰基內分泌健康迷思群島 · 榮譽結業證書', 400, 85);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '14px "Noto Sans TC", sans-serif';
+      ctx.fillText('CERTIFICATE OF HEALTH KNOWLEDGE & MYTH EXPLORATION', 400, 115);
+
+      // Recipient Name
+      ctx.fillStyle = '#2a8a74';
+      ctx.font = 'bold 36px "Huninn", "Noto Sans TC", sans-serif';
+      ctx.fillText(name || '健康守護勇者', 400, 195);
+
+      // Citation text
+      ctx.fillStyle = '#374151';
+      ctx.font = '16px "Noto Sans TC", sans-serif';
+      ctx.fillText('恭喜您已完整造訪彰基內分泌 3D 群島，深入研讀七大主題衛教項目，', 400, 255);
+      ctx.fillText('破解 70 項健康迷思與臨床指引，展現卓越之健康素養與自我守護決心！', 400, 285);
+
+      // Statistics box
+      const visitedCount = this.state.visitedIslands.length;
+      let totalScore = 0;
+      Object.values(this.state.quizScores).forEach((sc) => (totalScore += sc));
+
+      ctx.fillStyle = '#f0fdf9';
+      ctx.strokeStyle = '#99f6e4';
+      ctx.lineWidth = 1;
+      ctx.fillRect(180, 320, 440, 50);
+      ctx.strokeRect(180, 320, 440, 50);
+
+      ctx.fillStyle = '#0f766e';
+      ctx.font = 'bold 15px "Noto Sans TC", sans-serif';
+      ctx.fillText(`已訪島嶼：${visitedCount} / 8 座  |  測驗累積積分：${totalScore} 分`, 400, 352);
+
+      // Seal and Sign-off
+      ctx.fillStyle = '#4b5563';
+      ctx.font = '13px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('發行單位：彰化基督教醫院 內分泌暨新陳代謝科 醫療團隊', 50, 425);
+      ctx.fillText('總部陣容：全體 18 位內分泌暨新陳代謝專科主治醫師', 50, 445);
+
+      // Stamp
+      ctx.save();
+      ctx.translate(670, 410);
+      ctx.rotate(-0.1);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-65, -30, 130, 60);
+      ctx.fillStyle = '#dc2626';
+      ctx.font = 'bold 13px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('彰化基督教醫院', 0, -8);
+      ctx.fillText('內分泌暨新陳代謝科', 0, 14);
+      ctx.restore();
+    };
+
+    drawCertificate(this.state.userName);
+
+    modal.querySelector('#btn-update-cert')?.addEventListener('click', () => {
+      this.state.userName = nameInput.value.trim() || '健康守護者';
+      this.saveState();
+      drawCertificate(this.state.userName);
+      this.showToast('證書姓名已更新！');
+    });
+
+    modal.querySelector('#btn-download-cert')?.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `彰基內分泌群島榮譽證書_${this.state.userName}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  }
+
+  // --- Feature Modal: Save Code (跨裝置接關碼) ---
+  openSaveCodeModal() {
+    let modal = document.getElementById('modal-savecode');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-savecode';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
+
     const exportCode = btoa(unescape(encodeURIComponent(JSON.stringify(this.state))));
 
-    body.innerHTML = `
-      <div class="mb-4">
-        <h3 class="text-xl font-bold text-primary-heading">🔑 跨裝置進度接關碼</h3>
-        <p class="text-xs text-muted">換電腦或手機玩？複製專屬接關碼，隨時接續您的探索旅程！</p>
-      </div>
-
-      <div class="mb-4">
-        <label class="block text-xs font-bold text-ink mb-1">您目前的探索接關碼：</label>
-        <div class="flex gap-2">
-          <input type="text" readonly value="${exportCode}" id="export-code-input" class="flex-1 px-3 py-2 text-xs font-mono rounded-lg border border-line bg-surface-alt text-ink select-all">
-          <button id="btn-copy-savecode" class="px-3 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:opacity-90">
-            複製
-          </button>
+    modal.innerHTML = `
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🔑</span>
+            <h3 class="modal-title font-bold text-base">跨裝置接關碼 (進度存取)</h3>
+          </div>
+          <button class="btn-modal-close" id="btn-close-savecode">✕</button>
         </div>
-      </div>
 
-      <div class="pt-3 border-t border-line mb-3">
-        <label class="block text-xs font-bold text-ink mb-1">貼上在另一台裝置取得的接關碼：</label>
-        <textarea id="import-code-input" rows="3" placeholder="在此貼上 Base64 接關碼字串..." class="w-full px-3 py-2 text-xs font-mono rounded-lg border border-line bg-surface text-ink focus:outline-none focus:border-primary mb-2"></textarea>
-        <button id="btn-import-savecode" class="w-full py-2 bg-surface-alt border border-primary text-primary font-bold text-xs rounded-lg hover:bg-primary/10 transition">
-          還原並讀取進度
-        </button>
+        <div class="modal-body space-y-4">
+          <div>
+            <label class="text-xs font-bold text-muted mb-1 block">您的專屬進度接關代碼：</label>
+            <textarea id="savecode-export" class="w-full p-2.5 rounded-xl border border-line bg-surface-alt text-xs font-mono select-all focus:outline-none" rows="3" readonly>${exportCode}</textarea>
+            <button id="btn-copy-savecode" class="mt-1.5 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold">複製接關碼</button>
+          </div>
+
+          <div class="border-t border-line pt-3">
+            <label class="text-xs font-bold text-muted mb-1 block">在其他裝置還原進度：</label>
+            <textarea id="savecode-import" class="w-full p-2.5 rounded-xl border border-line bg-surface text-xs font-mono focus:outline-none focus:border-primary" rows="2" placeholder="在此貼上接關代碼..."></textarea>
+            <button id="btn-apply-savecode" class="mt-1.5 px-3 py-1.5 bg-emerald-700 text-white rounded-lg text-xs font-bold">載入進度</button>
+          </div>
+        </div>
       </div>
     `;
 
-    const copyBtn = document.getElementById('btn-copy-savecode');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(exportCode);
-        this.showToast('接關碼已成功複製至剪貼簿！');
-      });
-    }
+    modal.classList.add('open');
+    modal.querySelector('#btn-close-savecode')?.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
 
-    const importBtn = document.getElementById('btn-import-savecode');
-    if (importBtn) {
-      importBtn.addEventListener('click', () => {
-        const val = document.getElementById('import-code-input')?.value.trim();
-        if (!val) {
-          alert('請先貼上接關碼！');
-          return;
-        }
-        try {
-          const decoded = JSON.parse(decodeURIComponent(escape(atob(val))));
-          if (decoded && Array.isArray(decoded.visitedIslands)) {
-            this.state = { ...this.state, ...decoded };
-            this.saveState();
-            this.applyTheme(this.state.theme);
-            this.setDayNight(this.state.dayNight);
-            this.showToast('🎉 進度已成功還原！');
-            this.closeModal();
-          } else {
-            throw new Error('Invalid format');
-          }
-        } catch (e) {
-          alert('接關碼格式不正確，請確認代碼是否完整複製！');
-        }
+    modal.querySelector('#btn-copy-savecode')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(exportCode).then(() => {
+        this.showToast('✅ 接關代碼已成功複製！');
       });
-    }
+    });
 
-    this.openModal(modal);
+    modal.querySelector('#btn-apply-savecode')?.addEventListener('click', () => {
+      const code = modal.querySelector('#savecode-import').value.trim();
+      if (!code) return;
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(code))));
+        this.state = { ...this.state, ...decoded };
+        this.saveState();
+        this.updateProgressUI();
+        modal.classList.remove('open');
+        this.showToast('🎉 進度已成功同步還原！');
+      } catch (err) {
+        alert('無效的接關代碼，請確認代碼完整性。');
+      }
+    });
   }
 
-  // --- Share Card Generator ---
+  // --- Feature: Share Card ---
   openShareModal() {
-    const modal = document.getElementById('share-modal');
-    const body = document.getElementById('share-modal-body');
-    if (!modal || !body) return;
-
-    body.innerHTML = `
-      <div class="text-center mb-4">
-        <h3 class="text-xl font-bold text-primary-heading">📤 分享彰基糖友島</h3>
-        <p class="text-xs text-muted">邀請親友與病友一起解鎖臺灣糖尿病流行大數據</p>
-      </div>
-
-      <div class="p-4 rounded-xl bg-surface-alt border border-line mb-4 text-xs space-y-2">
-        <p class="font-bold text-ink">跟著彰基糖友島，解鎖糖尿病的秘密吧~</p>
-        <p class="text-muted leading-relaxed">
-          這是一座專為大眾打造的 3D 文獻知識島，收錄《2026臺灣糖尿病流行病學年鑑》關鍵實證、心腎保護新藥、疫苗防護與照護品質指引，歡迎一同探索！
-        </p>
-        <div class="pt-2 font-mono text-[11px] text-primary break-all">
-          ${window.location.href}
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2">
-        <button id="btn-copy-share-url" class="btn-action text-xs px-4 py-2 rounded-xl bg-primary text-white font-bold hover:opacity-90 flex items-center gap-1.5">
-          <span>📋</span> 複製分享連結
-        </button>
-      </div>
-    `;
-
-    const copyBtn = document.getElementById('btn-copy-share-url');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(window.location.href);
-        this.showToast('分享連結已複製至剪貼簿！');
-      });
-    }
-
-    this.openModal(modal);
-  }
-
-  // --- Text Directory & Equal Fallback Modal ---
-  openTextListModal() {
-    const modal = document.getElementById('text-list-modal');
-    const body = document.getElementById('text-list-modal-body');
-    if (!modal || !body) return;
-
-    body.innerHTML = `
-      <div class="mb-4">
-        <h3 class="text-xl font-bold text-primary-heading">🗺️ 全島地點與文獻清單</h3>
-        <p class="text-xs text-muted">不用 3D 也能完整閱讀全站所有島嶼、衛教重點與文獻目錄</p>
-      </div>
-
-      <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-        <!-- Central Island -->
-        <div class="p-4 rounded-xl border border-primary/30 bg-surface">
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-xs font-bold px-2 py-0.5 rounded bg-primary text-white">中央島</span>
-            <span class="text-xs text-muted">${this.content.centerIsland.role}</span>
-          </div>
-          <h4 class="font-bold text-base text-ink mb-1">${this.content.centerIsland.name}</h4>
-          <p class="text-xs text-muted mb-3">${this.content.centerIsland.description}</p>
-          <button class="btn-open-center-from-list text-xs px-3 py-1.5 bg-primary/10 text-primary font-bold rounded-lg hover:bg-primary/20">
-            開啟中央圖書館總目錄 →
-          </button>
-        </div>
-
-        <!-- Islands -->
-        ${this.content.islands.map((isl) => `
-          <div class="p-4 rounded-xl border border-line bg-surface">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="text-xs font-bold px-2 py-0.5 rounded bg-surface-alt text-primary border border-primary/30">島嶼 #0${isl.order} · ${isl.group}</span>
-              <span class="text-xs text-muted">${isl.landmark}</span>
-            </div>
-            <h4 class="font-bold text-base text-ink mb-1">${isl.name}</h4>
-            <p class="text-xs text-muted mb-2.5">${isl.intro}</p>
-            <div class="space-y-2 mb-3">
-              ${isl.points.map((p) => `
-                <div class="text-xs bg-surface-alt p-2 rounded-lg">
-                  <span class="font-bold text-primary">【${p.tag}】</span>
-                  <span class="text-ink">${p.title}</span>
-                </div>
-              `).join('')}
-            </div>
-            <button class="btn-open-island-from-list text-xs px-3 py-1.5 bg-primary text-white font-bold rounded-lg hover:opacity-90" data-id="${isl.id}">
-              進入 ${isl.name} 詳情與文獻 →
-            </button>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    body.querySelector('.btn-open-center-from-list')?.addEventListener('click', () => {
-      this.closeModal();
-      this.openCenterIslandModal();
+    const text = `🏝️ 我正在探索「彰基內分泌健康迷思群島」！由前糖尿病衛教學會理事長 杜思德醫師醫療團隊製作，破解糖尿病、減重、骨鬆、肌少症、代謝症候群、牙周病及甲狀腺7大迷思，快來一起測試您的健康觀念：\n${window.location.href}`;
+    navigator.clipboard.writeText(text).then(() => {
+      this.showToast('📋 分享文案與島嶼連結已複製至剪貼簿！');
+    }).catch(() => {
+      prompt('請複製以下分享文案：', text);
     });
+  }
 
-    body.querySelectorAll('.btn-open-island-from-list').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this.closeModal();
-        this.openIslandDrawer(btn.dataset.id);
+  // --- UI Updates ---
+  updateProgressUI() {
+    const totalIslands = 8; // Central Hub + 7 Outer Islands
+    const visited = this.state.visitedIslands.length;
+    const pct = Math.min(Math.round((visited / totalIslands) * 100), 100);
+
+    const textEl = document.getElementById('progress-bar-text');
+    const fillEl = document.getElementById('progress-bar-fill');
+    if (textEl) textEl.textContent = `探索進度: ${pct}% (${visited}/${totalIslands}座)`;
+    if (fillEl) fillEl.style.width = `${pct}%`;
+  }
+
+  triggerConfetti() {
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.8 }
       });
-    });
-
-    this.openModal(modal);
-  }
-
-  // --- Modal Helpers ---
-  openModal(modalEl) {
-    if (this.activeModal) this.activeModal.classList.remove('open');
-    this.activeModal = modalEl;
-    modalEl.classList.add('open');
-  }
-
-  closeModal() {
-    if (this.activeModal) {
-      this.activeModal.classList.remove('open');
-      this.activeModal = null;
+    } catch (e) {
+      // Confetti fallback
     }
   }
 
-  showToast(msg) {
+  showToast(message) {
     let toast = document.getElementById('app-toast');
     if (!toast) {
       toast = document.createElement('div');
@@ -1257,7 +1202,7 @@ class IslandApp {
       toast.className = 'app-toast';
       document.body.appendChild(toast);
     }
-    toast.textContent = msg;
+    toast.textContent = message;
     toast.classList.add('show');
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => {
@@ -1265,94 +1210,84 @@ class IslandApp {
     }, 2800);
   }
 
-  updateProgressUI() {
-    const totalIslands = this.content ? this.content.islands.length : 2;
-    const visited = this.state.visitedIslands.length;
-    const percent = Math.min(100, Math.round((visited / totalIslands) * 100));
-
-    const progressFill = document.getElementById('progress-bar-fill');
-    const progressText = document.getElementById('progress-bar-text');
-
-    if (progressFill) progressFill.style.width = `${percent}%`;
-    if (progressText) progressText.textContent = `探索進度: ${percent}% (${visited}/${totalIslands}島)`;
-  }
-
-  // --- Setup Top & Bottom UI Controls ---
-  setupUIEvents() {
-    // 1. Theme buttons
-    document.querySelectorAll('.theme-btn').forEach((btn) => {
-      btn.addEventListener('click', () => this.applyTheme(btn.dataset.theme));
-    });
-
-    // 2. Day/Night buttons
-    document.querySelectorAll('.daynight-btn').forEach((btn) => {
-      btn.addEventListener('click', () => this.setDayNight(btn.dataset.mode));
-    });
-
-    // 3. Overview button
+  // --- Event Bindings ---
+  setupUI() {
+    // 1. Overview Button
     document.getElementById('btn-overview')?.addEventListener('click', () => {
-      this.closeDrawer();
       if (this.scene) this.scene.resetToOverview();
+      this.closeDrawer();
+      this.showToast('已切換為群島全景視角');
     });
 
-    // 4. Reduced Motion toggle
-    document.getElementById('btn-reduced-motion')?.addEventListener('click', () => this.toggleReducedMotion());
-
-    // 5. Sound toggle
-    document.getElementById('btn-sound')?.addEventListener('click', () => this.toggleSound());
-
-    // 6. Feature modal buttons
-    document.getElementById('btn-guide')?.addEventListener('click', () => this.openGuideModal());
-    document.getElementById('btn-collection')?.addEventListener('click', () => this.openCollectionModal());
-    document.getElementById('btn-certificate')?.addEventListener('click', () => this.openCertificateModal());
-    document.getElementById('btn-chest')?.addEventListener('click', () => this.openChestModal());
-    document.getElementById('btn-savecode')?.addEventListener('click', () => this.openSaveCodeModal());
-    document.getElementById('btn-share')?.addEventListener('click', () => this.openShareModal());
-    document.getElementById('btn-list')?.addEventListener('click', () => this.openTextListModal());
-
-    // 7. Floating Island HTML tags
-    document.querySelectorAll('.floating-island-tag').forEach((tag) => {
-      tag.addEventListener('click', () => {
-        const id = tag.dataset.islandId;
-        if (id) {
-          if (this.scene) this.scene.focusIsland(id);
-          this.openIslandDrawer(id);
-        }
-      });
-    });
-
-    // 8. Drawer Close button
-    document.getElementById('btn-drawer-close')?.addEventListener('click', () => this.closeDrawer());
-
-    // 9. Modal close backdrop & close buttons
-    document.querySelectorAll('.modal-backdrop, .btn-modal-x').forEach((el) => {
-      el.addEventListener('click', () => this.closeModal());
-    });
-
-    // 10. Bottom Dock Collapse / Expand toggle
+    // 2. Dock Toggle
     const dock = document.getElementById('bottom-dock');
-    const dockToggle = document.getElementById('btn-dock-toggle');
-    if (dock && dockToggle) {
-      dockToggle.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('btn-dock-toggle');
+    if (toggleBtn && dock) {
+      toggleBtn.addEventListener('click', () => {
         dock.classList.toggle('collapsed');
-        dockToggle.innerHTML = dock.classList.contains('collapsed') ? '▴ 展開控制塢' : '▾ 收合控制塢';
+        toggleBtn.textContent = dock.classList.contains('collapsed') ? '▴ 展開控制塢' : '▾ 收合控制塢';
       });
     }
 
-    // 11. Global Keyboard Esc support
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (this.activeModal) {
-          this.closeModal();
-        } else {
-          this.closeDrawer();
-        }
-      }
+    // 3. Floating 3D Island Tags click handlers
+    const islandIds = [
+      'island-center',
+      'island-01',
+      'island-02',
+      'island-03',
+      'island-04',
+      'island-05',
+      'island-06',
+      'island-07'
+    ];
+    islandIds.forEach((id) => {
+      document.getElementById(`tag-${id}`)?.addEventListener('click', () => {
+        if (this.scene) this.scene.focusIsland(id);
+        this.openIslandDrawer(id);
+      });
     });
+
+    // 4. Drawer Close Button
+    document.getElementById('btn-drawer-close')?.addEventListener('click', () => this.closeDrawer());
+
+    // 5. Place List Button
+    document.getElementById('btn-list')?.addEventListener('click', () => this.openTextListModal());
+
+    // 6. Theme Buttons
+    document.querySelectorAll('.theme-btn[data-theme]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const theme = e.currentTarget.getAttribute('data-theme');
+        this.applyTheme(theme);
+      });
+    });
+
+    // 7. Day / Night Buttons
+    document.querySelectorAll('.daynight-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const mode = e.currentTarget.getAttribute('data-mode');
+        this.applyDayNight(mode);
+      });
+    });
+
+    // 8. Reduced Motion toggle
+    document.getElementById('btn-reduced-motion')?.addEventListener('click', () => this.toggleReducedMotion());
+
+    // 9. Sound toggle
+    document.getElementById('btn-sound')?.addEventListener('click', () => this.toggleSound());
+
+    // 10. Feature modal buttons
+    document.getElementById('btn-guide')?.addEventListener('click', () => this.openGuideModal());
+    document.getElementById('btn-chest')?.addEventListener('click', () => this.openDailyChestModal());
+    document.getElementById('btn-collection')?.addEventListener('click', () => this.openCollectionModal());
+    document.getElementById('btn-certificate')?.addEventListener('click', () => this.openCertificateModal());
+    document.getElementById('btn-savecode')?.addEventListener('click', () => this.openSaveCodeModal());
+    document.getElementById('btn-share')?.addEventListener('click', () => this.openShareModal());
   }
 }
 
-// Bootstrap once DOM is ready
+// Start Application on DOM Ready
 window.addEventListener('DOMContentLoaded', () => {
-  window.app = new IslandApp();
+  const app = new IslandApp();
+  app.init();
+  window.__islandApp = app;
 });
